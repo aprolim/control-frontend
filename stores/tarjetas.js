@@ -52,24 +52,7 @@ export const useTarjetasStore = defineStore('tarjetas', {
         const headers = this.getAuthHeaders();
         if (!headers.Authorization) throw new Error('No autenticado');
         
-        console.log('🔄 FETCH TARJETAS - Llamando al backend');
-        const response = await $fetch(url, { headers });
-        
-        // 🔍 LOG: Mostrar todas las tareas con su estadoProgreso
-        console.log('📋 TAREAS RECIBIDAS DEL BACKEND:');
-        response.forEach(t => {
-          console.log(`   - ${t.titulo} | estado: ${t.estado} | estadoProgreso: ${t.estadoProgreso} | tiempoEstimado: ${t.tiempoEstimadoEmpleado}`);
-        });
-        
-        // 🔍 LOG: Buscar si hay alguna tarea con estadoProgreso = 'activa'
-        const tareaActiva = response.find(t => t.estadoProgreso === 'activa');
-        if (tareaActiva) {
-          console.log('✅ TAREA ACTIVA ENCONTRADA:', tareaActiva.titulo);
-        } else {
-          console.log('❌ NO hay tareas con estadoProgreso = "activa" en la respuesta del backend');
-        }
-        
-        this.tarjetas = response;
+        this.tarjetas = await $fetch(url, { headers });
       } catch (error) {
         console.error('Error fetching tarjetas:', error);
         if (error.statusCode === 401) {
@@ -181,12 +164,10 @@ export const useTarjetasStore = defineStore('tarjetas', {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/auto-asignar`;
         const headers = this.getAuthHeaders();
-        console.log('📤 AUTO-ASIGNAR - Enviando a:', url);
         const result = await $fetch(url, {
           method: 'PUT',
           headers
         });
-        console.log('✅ AUTO-ASIGNAR - Respuesta:', result);
         await this.fetchTarjetas();
         return result;
       } catch (error) {

@@ -30,7 +30,7 @@
       </div>
     </nav>
     
-    <!-- Header público -->
+    <!-- Header público para usuarios no autenticados -->
     <div v-else class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex justify-between items-center">
@@ -76,6 +76,7 @@
           </button>
         </div>
         
+        <!-- Estado de Empleados en Tiempo Real -->
         <div class="mb-6">
           <EstadoEmpleados />
         </div>
@@ -132,77 +133,12 @@
           </button>
         </div>
         
-        <!-- Estado de Empleados (solo empleados) -->
+        <!-- Estado de Empleados en Tiempo Real (solo empleados) -->
         <div v-if="isEmpleado" class="mb-6">
           <EstadoEmpleados />
         </div>
         
-        <!-- ========== TAREA ACTIVA DESTACADA CON TIEMPO REAL ========== -->
-        <div v-if="tareaActiva" class="bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-500 rounded-lg p-6 mb-6 shadow-lg">
-          <div class="flex justify-between items-start">
-            <div class="flex-1">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="bg-green-500 text-white text-xs px-2 py-1 rounded-full animate-pulse flex items-center gap-1">
-                  <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                  ▶️ ACTIVA AHORA
-                </span>
-                <span class="text-sm text-gray-500">Tarea en ejecución</span>
-              </div>
-              <h3 class="text-xl font-bold text-gray-800">{{ tareaActiva.titulo }}</h3>
-              <p class="text-sm text-gray-600 mt-1">{{ tareaActiva.descripcion || 'Sin descripción' }}</p>
-              <div class="mt-2 text-xs text-gray-500">
-                <span>👤 Asignada a: {{ tareaActiva.asignadoA?.nombre || 'Ti mismo' }}</span>
-              </div>
-            </div>
-            <button 
-              @click="pausarTareaActiva"
-              class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition flex items-center gap-2"
-            >
-              <span>⏸️</span> Pausar
-            </button>
-          </div>
-          
-          <!-- TIMER EN TIEMPO REAL - VISIBLE Y GRANDE -->
-          <div class="mt-4 pt-4 border-t border-green-300">
-            <div class="grid grid-cols-3 gap-4 text-center">
-              <div class="bg-white rounded-lg p-3 shadow-sm">
-                <div class="text-xs text-gray-500 uppercase tracking-wide">Tiempo Estimado</div>
-                <div class="text-2xl font-bold text-blue-600">{{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}</div>
-              </div>
-              <div class="bg-white rounded-lg p-3 shadow-sm">
-                <div class="text-xs text-gray-500 uppercase tracking-wide">Tiempo Transcurrido</div>
-                <div class="text-2xl font-bold text-green-600" id="timer-transcurrido">
-                  {{ formatTiempo(tiempoTranscurrido) }}
-                </div>
-              </div>
-              <div class="bg-white rounded-lg p-3 shadow-sm">
-                <div class="text-xs text-gray-500 uppercase tracking-wide">Tiempo Restante</div>
-                <div class="text-2xl font-bold" :class="tiempoRestante < 60 ? 'text-red-600 animate-pulse' : 'text-orange-600'">
-                  {{ formatTiempo(tiempoRestante) }}
-                </div>
-              </div>
-            </div>
-            
-            <!-- Barra de progreso con porcentaje -->
-            <div class="mt-4">
-              <div class="flex justify-between text-sm mb-1">
-                <span class="font-medium">Progreso Automático</span>
-                <span class="font-bold text-green-600">{{ porcentajeAutomatico }}%</span>
-              </div>
-              <div class="w-full bg-gray-200 rounded-full h-4">
-                <div 
-                  class="bg-green-500 rounded-full h-4 transition-all duration-500"
-                  :style="{ width: `${porcentajeAutomatico}%` }"
-                ></div>
-              </div>
-              <p class="text-xs text-gray-400 text-center mt-2">
-                Actualización cada 5 segundos
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Tareas disponibles -->
+        <!-- Tareas disponibles para tomar -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-bold text-gray-800">📋 Tareas Disponibles</h2>
@@ -255,15 +191,70 @@
           </div>
         </div>
         
-        <!-- Mis Tareas en Progreso (pausadas) -->
+        <!-- Mis Tareas - Activa y Pausadas -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">⚙️ Mis Tareas en Progreso (Pausadas)</h2>
+          <h2 class="text-xl font-bold text-gray-800 mb-4">⚙️ Mis Tareas</h2>
           
-          <div v-if="tareasPausadas.length === 0" class="text-center py-8 text-gray-500">
-            No tienes tareas pausadas
+          <div v-if="tareasEnProgreso.length === 0 && !tareaActiva" class="text-center py-8 text-gray-500">
+            No tienes tareas asignadas actualmente
           </div>
           
           <div v-else class="space-y-4">
+            <!-- Tarea Activa (destacada) -->
+            <div v-if="tareaActiva" class="border-2 border-green-500 bg-green-50 rounded-lg p-4 shadow-md">
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-2">
+                  <h3 class="font-bold text-gray-800">{{ tareaActiva.titulo }}</h3>
+                  <span class="text-xs px-2 py-1 rounded-full bg-green-500 text-white flex items-center gap-1">
+                    <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                    ACTIVA
+                  </span>
+                </div>
+                <span :class="prioridadColorClass(tareaActiva.prioridad)" class="px-2 py-0.5 rounded-full text-xs">
+                  {{ prioridadTextoLabel(tareaActiva.prioridad) }}
+                </span>
+              </div>
+              <p class="text-sm text-gray-600 mb-3">{{ tareaActiva.descripcion || 'Sin descripción' }}</p>
+              
+              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                <div>
+                  <span class="text-gray-500">Progreso:</span>
+                  <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                    <div class="bg-green-500 rounded-full h-2" :style="{ width: `${tareaActiva.porcentajeCompletado}%` }"></div>
+                  </div>
+                  <span class="text-xs">{{ tareaActiva.porcentajeCompletado }}%</span>
+                </div>
+                <div>
+                  <span class="text-gray-500">Tiempo estimado:</span>
+                  <span class="font-medium ml-1">{{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}</span>
+                </div>
+              </div>
+              
+              <div class="flex gap-2">
+                <button 
+                  @click="pausarTarea(tareaActiva._id)"
+                  class="flex-1 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition text-sm"
+                >
+                  ⏸️ Pausar
+                </button>
+                <button 
+                  @click="abrirModalProgreso(tareaActiva)"
+                  class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition text-sm"
+                >
+                  📊 Registrar progreso
+                </button>
+              </div>
+              
+              <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 text-sm">
+                <div class="flex items-center gap-2 text-gray-600">
+                  <span>👤 Cliente:</span>
+                  <span class="font-medium">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
+                  <span v-if="tareaActiva.clienteInfo.telefono" class="text-gray-500">📞 {{ tareaActiva.clienteInfo.telefono }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Tareas Pausadas -->
             <div v-for="tarea in tareasPausadas" :key="tarea._id" 
                  class="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
               <div class="flex justify-between items-start mb-2">
@@ -288,8 +279,8 @@
                   <span class="text-xs">{{ tarea.porcentajeCompletado }}%</span>
                 </div>
                 <div>
-                  <span class="text-gray-500">Tiempo estimado:</span>
-                  <span class="font-medium ml-1">{{ formatTiempo(tarea.tiempoEstimadoEmpleado) }}</span>
+                  <span class="text-gray-500">Tiempo trabajado:</span>
+                  <span class="font-medium ml-1">{{ formatTiempoReal(tarea) }}</span>
                 </div>
               </div>
               
@@ -314,6 +305,14 @@
                 >
                   📊 Registrar progreso
                 </button>
+              </div>
+              
+              <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 text-sm">
+                <div class="flex items-center gap-2 text-gray-600">
+                  <span>👤 Cliente:</span>
+                  <span class="font-medium">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
+                  <span v-if="tarea.clienteInfo.telefono" class="text-gray-500">📞 {{ tarea.clienteInfo.telefono }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -412,7 +411,7 @@
         </div>
       </div>
       
-      <!-- Sección pública -->
+      <!-- Sección pública para hacer solicitudes sin login -->
       <div v-else>
         <div class="max-w-2xl mx-auto">
           <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 mb-6 text-white">
@@ -639,22 +638,14 @@ const tareasDisponibles = ref([]);
 const cargandoDisponibles = ref(false);
 const cargandoTarea = ref(false);
 
-// Estado de tiempo real para tarea activa
-const tiempoTranscurrido = ref(0);
-const tiempoRestante = ref(0);
-const porcentajeAutomatico = ref(0);
-let intervaloTiempo = null;
+// Intervalos
+let pollingInterval = null;
+let intervaloTareasActivas = null;
 
-// Computed
+// Computed para empleado
 const tareasEnProgreso = computed(() => {
   return tarjetasStore.tarjetas.filter(t => 
     t.estado === 'en_progreso'
-  );
-});
-
-const tareasPausadas = computed(() => {
-  return tarjetasStore.tarjetas.filter(t => 
-    t.estado === 'en_progreso' && t.estadoProgreso !== 'activa'
   );
 });
 
@@ -671,6 +662,14 @@ const tareaActiva = computed(() => {
   );
 });
 
+const tareasPausadas = computed(() => {
+  if (!tareaActiva.value) {
+    return tareasEnProgreso.value;
+  }
+  return tareasEnProgreso.value.filter(t => t._id !== tareaActiva.value._id);
+});
+
+// Computed para cliente
 const misSolicitudes = computed(() => {
   return tarjetasStore.tarjetas;
 });
@@ -689,6 +688,11 @@ const formatTiempo = (minutos) => {
   if (horas === 0) return `${mins} min`;
   if (mins === 0) return `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
   return `${horas}h ${mins}min`;
+};
+
+const formatTiempoReal = (tarea) => {
+  const totalMinutos = (tarea.horasTotalesReales * 60) + (tarea.minutosTotalesReales || 0);
+  return formatTiempo(totalMinutos);
 };
 
 const prioridadColorClass = (prioridad) => {
@@ -733,48 +737,6 @@ const estadoColorClass = (estado) => {
   return map[estado] || 'bg-gray-100 text-gray-700';
 };
 
-// Actualizar tiempo real de la tarea activa
-const actualizarTiempoReal = async () => {
-  if (!tareaActiva.value) return;
-  
-  try {
-    const token = localStorage.getItem('token');
-    const url = `${config.public.apiBase}/tarjetas/${tareaActiva.value._id}/progreso-automatico`;
-    const response = await $fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    
-    if (response.estaActiva) {
-      tiempoTranscurrido.value = response.tiempoTranscurrido;
-      tiempoRestante.value = response.tiempoRestante;
-      porcentajeAutomatico.value = response.porcentajeCalculado;
-      
-      // Actualizar el progreso en el store
-      if (response.porcentajeCalculado > tareaActiva.value.porcentajeCompletado) {
-        tareaActiva.value.porcentajeCompletado = response.porcentajeCalculado;
-      }
-    }
-  } catch (error) {
-    console.error('Error actualizando tiempo real:', error);
-  }
-};
-
-// Iniciar intervalo de tiempo real
-const iniciarIntervaloTiempoReal = () => {
-  if (intervaloTiempo) clearInterval(intervaloTiempo);
-  intervaloTiempo = setInterval(() => {
-    actualizarTiempoReal();
-  }, 5000); // Cada 5 segundos
-};
-
-// Detener intervalo
-const detenerIntervaloTiempoReal = () => {
-  if (intervaloTiempo) {
-    clearInterval(intervaloTiempo);
-    intervaloTiempo = null;
-  }
-};
-
 // Recargar datos
 const recargarDatos = async () => {
   await tarjetasStore.fetchTarjetas();
@@ -784,17 +746,6 @@ const recargarDatos = async () => {
   }
   if (isEmpleado.value || isJefe.value) {
     await cargarTareasDisponibles();
-  }
-  
-  // Gestionar intervalo según tarea activa
-  if (tareaActiva.value) {
-    iniciarIntervaloTiempoReal();
-    await actualizarTiempoReal();
-  } else {
-    detenerIntervaloTiempoReal();
-    tiempoTranscurrido.value = 0;
-    tiempoRestante.value = 0;
-    porcentajeAutomatico.value = 0;
   }
 };
 
@@ -871,12 +822,6 @@ const pausarTarea = async (id) => {
   }
 };
 
-const pausarTareaActiva = async () => {
-  if (tareaActiva.value) {
-    await pausarTarea(tareaActiva.value._id);
-  }
-};
-
 const reanudarTarea = async (id) => {
   try {
     const token = localStorage.getItem('token');
@@ -923,6 +868,42 @@ const cargarMetricas = () => {
     return sum + (t.registroHoras?.filter(r => r.esHoraExtra).reduce((s, r) => s + (r.horasTrabajadas || 0), 0) || 0);
   }, 0);
   calificacionGeneral.value = calificadas.length ? (calificadas.reduce((sum, t) => sum + (t.calificacion?.puntaje || 0), 0) / calificadas.length).toFixed(1) : '0.0';
+};
+
+// ✅ NUEVA FUNCIÓN: Actualizar progreso automático en BD
+const actualizarProgresoEnBD = async () => {
+  if (!tareaActiva.value || !authStore.isAuthenticated) return;
+  
+  try {
+    const token = localStorage.getItem('token');
+    const url = `${config.public.apiBase}/tarjetas/${tareaActiva.value._id}/progreso-automatico`;
+    console.log('🔄 [PROGRESO-AUTOMATICO] Llamando a:', url);
+    
+    const response = await $fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    console.log('✅ [PROGRESO-AUTOMATICO] Respuesta:', response);
+    
+    // Si hubo cambio en el estado (por ejemplo, pasó a revisión), recargar datos
+    if (response.huboCambio || response.estado !== tareaActiva.value.estado) {
+      console.log('📢 Hubo cambio en la tarea, recargando datos...');
+      await recargarDatos();
+    }
+  } catch (error) {
+    console.error('❌ Error en progreso automático:', error);
+  }
+};
+
+// Iniciar intervalo de actualización de tareas activas
+const iniciarIntervaloTareasActivas = () => {
+  if (intervaloTareasActivas) clearInterval(intervaloTareasActivas);
+  intervaloTareasActivas = setInterval(async () => {
+    if (tareaActiva.value && authStore.isAuthenticated) {
+      console.log('🔄 Actualizando progreso de tarea activa en BD...');
+      await actualizarProgresoEnBD();
+    }
+  }, 5000);
 };
 
 // Solicitud pública
@@ -995,14 +976,12 @@ if (process.client) {
   window.refreshTareasDisponibles = refreshTareasDisponibles;
 }
 
-// Polling
-let pollingInterval = null;
-
 onMounted(async () => {
   authStore.loadFromStorage();
   
   if (authStore.isAuthenticated) {
     await recargarDatos();
+    iniciarIntervaloTareasActivas();
   }
   
   pollingInterval = setInterval(async () => {
@@ -1014,7 +993,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (pollingInterval) clearInterval(pollingInterval);
-  detenerIntervaloTiempoReal();
+  if (intervaloTareasActivas) clearInterval(intervaloTareasActivas);
 });
 
 const logout = () => {

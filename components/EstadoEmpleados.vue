@@ -108,7 +108,7 @@ const formatTiempo = (minutos) => {
 
 const formatTiempoRestante = (minutos) => {
   if (!minutos && minutos !== 0) return 'Calculando...';
-  if (minutos <= 0) return 'Finalizando...';
+  if (minutos <= 0) return '✅ Tiempo cumplido'; // Cambiado de "Finalizando..."
   const horas = Math.floor(minutos / 60);
   const mins = minutos % 60;
   if (horas === 0) return `${mins} min`;
@@ -179,5 +179,12 @@ defineExpose({
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>

@@ -6,7 +6,37 @@ COMPILADO DE ARCHIVOS
 ================================= 
  
 API_BASE=http://localhost:5000/api
-WS_URL=http://localhost:5000 
+WS_URL=http://localhost:5000
+VITE_DISABLE_WEBSOCKET=true 
+================================= 
+.gitignore 
+================================= 
+ 
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Node dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+.fleet
+.idea
+
+# Local env files
+.env
+.env.*
+!.env.example
+ 
 ================================= 
 app.vue 
 ================================= 
@@ -32,7 +62,6 @@ nuxt.config.js
 ================================= 
  
 export default defineNuxtConfig({
-  // Devtools completamente deshabilitado
   devtools: { enabled: false },
   
   modules: [
@@ -52,19 +81,28 @@ export default defineNuxtConfig({
   
   ssr: false,
   
-  // Configuración de Vite optimizada
+  // Configuración crítica para deshabilitar WebSocket de Vite
   vite: {
     server: {
+      hmr: false,
       fs: {
         strict: false
       }
     },
     optimizeDeps: {
       include: ['chart.js', 'vue-chartjs', 'socket.io-client']
-    }
+    },
+    // Deshabilitar completamente HMR
+    hmr: false,
+    // Deshabilitar el middleware de Vite
+    clearScreen: false
   },
   
-  // Deshabilitar telemetría
+  // Configuración para deshabilitar características de desarrollo
+  experimental: {
+    inlineSSRStyles: false
+  },
+  
   telemetry: false,
   
   app: {
@@ -140,6 +178,28 @@ export default {
   },
   plugins: [],
 } 
+================================= 
+vite.config.js 
+================================= 
+ 
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  server: {
+    port: 3000,
+    strictPort: false,
+    hmr: false,
+    watch: {
+      usePolling: false
+    }
+  },
+  optimizeDeps: {
+    include: ['chart.js', 'vue-chartjs', 'socket.io-client']
+  },
+  build: {
+    sourcemap: false
+  }
+}); 
 ================================= 
 assets\css\main.css 
 ================================= 
@@ -729,12 +789,21 @@ components\EstadoEmpleados.vue
                     class="text-xs px-2 py-0.5 rounded-full">
                 {{ emp.tarea ? '🟢 Ocupado' : '⚪ Disponible' }}
               </span>
+              <span v-if="emp.rol === 'jefe'" class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                👔 Jefe
+              </span>
             </div>
             <p class="text-xs text-gray-500">{{ emp.empleadoEmail }}</p>
           </div>
-          <div v-if="emp.tarea" class="text-right">
+          <div v-if="emp.tarea && emp.tarea.tiempoRestante !== null" class="text-right">
             <span class="text-xs text-gray-500">Tiempo restante</span>
-            <p class="text-lg font-bold text-blue-600">{{ formatTiempoRestante(emp.tarea.tiempoRestante) }}</p>
+            <p class="text-lg font-bold" :class="emp.tarea.tiempoRestante < 5 ? 'text-red-600 animate-pulse' : 'text-blue-600'">
+              {{ formatTiempoRestante(emp.tarea.tiempoRestante) }}
+            </p>
+          </div>
+          <div v-else-if="emp.tarea && emp.tarea.tiempoRestante === null" class="text-right">
+            <span class="text-xs text-gray-500">Estado</span>
+            <p class="text-sm font-medium text-green-600">En progreso</p>
           </div>
         </div>
         
@@ -752,16 +821,16 @@ components\EstadoEmpleados.vue
           <p class="text-xs text-gray-600 line-clamp-2">{{ emp.tarea.descripcion || 'Sin descripción' }}</p>
           
           <div class="grid grid-cols-2 gap-2 mt-2 text-xs text-gray-500">
-            <div>
+            <div v-if="emp.tarea.tiempoEstimado > 0">
               ⏱️ Estimado: {{ formatTiempo(emp.tarea.tiempoEstimado) }}
             </div>
-            <div>
+            <div v-if="emp.tarea.tiempoTranscurrido > 0">
               ⏲️ Transcurrido: {{ formatTiempo(emp.tarea.tiempoTranscurrido) }}
             </div>
             <div v-if="emp.tarea.fechaEstimadaFin">
               🎯 Finaliza: {{ formatFechaHora(emp.tarea.fechaEstimadaFin) }}
             </div>
-            <div>
+            <div v-if="emp.tarea.fechaInicio">
               📅 Inicio: {{ formatFechaHora(emp.tarea.fechaInicio) }}
             </div>
           </div>
@@ -794,7 +863,7 @@ const formatTiempo = (minutos) => {
 
 const formatTiempoRestante = (minutos) => {
   if (!minutos && minutos !== 0) return 'Calculando...';
-  if (minutos <= 0) return 'Finalizando...';
+  if (minutos <= 0) return '✅ Tiempo cumplido'; // Cambiado de "Finalizando..."
   const horas = Math.floor(minutos / 60);
   const mins = minutos % 60;
   if (horas === 0) return `${mins} min`;
@@ -834,7 +903,6 @@ const actualizarEstadoTiempoReal = (data) => {
   cargarEstadoEmpleados();
 };
 
-// Registrar callback para actualizaciones en tiempo real
 if (process.client) {
   window.registerEstadoUpdateCallback(actualizarEstadoTiempoReal);
 }
@@ -844,7 +912,6 @@ onMounted(async () => {
   await cargarEstadoEmpleados();
   cargando.value = false;
   
-  // Actualizar cada 30 segundos como respaldo
   intervaloActualizacion = setInterval(() => {
     cargarEstadoEmpleados();
   }, 30000);
@@ -867,6 +934,13 @@ defineExpose({
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style> 
 ================================= 
@@ -1143,7 +1217,6 @@ const props = defineProps({
 
 const emit = defineEmits(['tiempo-establecido']);
 
-const tarjetasStore = useTarjetasStore();
 const config = useRuntimeConfig();
 const guardando = ref(false);
 const tiempoHoras = ref(0);
@@ -1190,6 +1263,10 @@ const guardarTiempo = async () => {
     const token = localStorage.getItem('token');
     const url = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/iniciar`;
     console.log('📤 Enviando tiempo estimado a:', url);
+    console.log('📦 Datos:', { 
+      tiempoEstimadoHoras: tiempoHoras.value, 
+      tiempoEstimadoMinutos: tiempoMinutos.value 
+    });
     
     const response = await $fetch(url, {
       method: 'PUT',
@@ -1200,13 +1277,18 @@ const guardarTiempo = async () => {
       }
     });
     
-    if (response.success) {
-      emit('tiempo-establecido', response.tarjeta);
+    console.log('✅ Respuesta:', response);
+    
+    // ✅ CORRECCIÓN: El endpoint devuelve la tarjeta directamente
+    if (response && response._id) {
+      emit('tiempo-establecido', response);
     } else {
-      alert('Error al guardar el tiempo estimado');
+      console.error('Respuesta inesperada:', response);
+      alert('Error al guardar el tiempo estimado: Respuesta inválida del servidor');
     }
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error detallado:', error);
+    console.error('❌ Error response:', error.data);
     alert('Error al guardar el tiempo estimado: ' + (error.data?.message || error.message));
   } finally {
     guardando.value = false;
@@ -1601,7 +1683,24 @@ const handleSubmit = async () => {
       });
       alert('✅ Solicitud enviada exitosamente.');
     }
+    
+    // ✅ CERRAR MODAL DESPUÉS DE CREAR
+    emit('close');
+    // ✅ NOTIFICAR AL PADRE QUE SE CREÓ
     emit('created');
+    
+    // Limpiar formulario para la próxima vez
+    form.value = {
+      titulo: '',
+      descripcion: '',
+      horasEstimadas: 0,
+      minutosEstimados: 0,
+      logueado: false,
+      nombre: '',
+      email: '',
+      telefono: ''
+    };
+    
   } catch (error) {
     console.error('Error:', error);
     alert('Error al crear: ' + (error.message || 'Error desconocido'));
@@ -1616,12 +1715,29 @@ components\TarjetaCard.vue
  
 <template>
   <div class="tarjeta-card bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4"
-    :class="prioridadBorder">
+    :class="[prioridadBorder, estadoClaseBorde]">
     <div class="flex justify-between items-start mb-2">
-      <h4 class="font-semibold text-gray-900 truncate">{{ tarjeta.titulo }}</h4>
-      <div class="flex gap-1">
-        <span v-if="tarjeta.estadoProgreso === 'activa'" class="text-xs px-1 py-0.5 bg-green-100 text-green-700 rounded">▶️</span>
-        <span v-if="tarjeta.estadoProgreso === 'pausada'" class="text-xs px-1 py-0.5 bg-yellow-100 text-yellow-700 rounded">⏸️</span>
+      <h4 class="font-semibold text-gray-900 truncate flex-1">{{ tarjeta.titulo }}</h4>
+      <div class="flex gap-1 ml-2">
+        <!-- Estado de progreso (activa/pausada) -->
+        <span v-if="tarjeta.estadoProgreso === 'activa'" 
+              class="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full flex items-center gap-1"
+              title="En ejecución">
+          <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+          Activa
+        </span>
+        <span v-else-if="tarjeta.estadoProgreso === 'pausada'" 
+              class="text-xs px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded-full flex items-center gap-1"
+              title="Pausada">
+          ⏸️ Pausada
+        </span>
+        <span v-else-if="tarjeta.estadoProgreso === 'pendiente' && tarjeta.tiempoEstimadoEmpleado === 0" 
+              class="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full"
+              title="Sin iniciar">
+          ⏳ Pendiente
+        </span>
+        
+        <!-- Prioridad -->
         <span :class="prioridadColor" class="px-2 py-1 rounded-full text-xs font-medium">
           {{ prioridadTexto }}
         </span>
@@ -1640,7 +1756,8 @@ components\TarjetaCard.vue
       
       <div class="w-full bg-gray-200 rounded-full h-2">
         <div
-          class="bg-primary-600 rounded-full h-2 transition-all"
+          class="rounded-full h-2 transition-all"
+          :class="progresoColorBarra"
           :style="{ width: `${tarjeta.porcentajeCompletado}%` }"
         ></div>
       </div>
@@ -1704,6 +1821,23 @@ const prioridadTexto = computed(() => prioridadMap[props.tarjeta.prioridad]?.tex
 const prioridadColor = computed(() => prioridadMap[props.tarjeta.prioridad]?.color || prioridadMap.media.color);
 const prioridadBorder = computed(() => prioridadMap[props.tarjeta.prioridad]?.border || prioridadMap.media.border);
 
+const estadoClaseBorde = computed(() => {
+  if (props.tarjeta.estadoProgreso === 'activa') {
+    return 'border-l-green-500';
+  }
+  if (props.tarjeta.estadoProgreso === 'pausada') {
+    return 'border-l-yellow-500';
+  }
+  return '';
+});
+
+const progresoColorBarra = computed(() => {
+  if (props.tarjeta.estadoProgreso === 'activa') {
+    return 'bg-green-500';
+  }
+  return 'bg-primary-600';
+});
+
 const tiempoEstimadoFormateado = computed(() => {
   const totalMinutos = (props.tarjeta.tiempoEstimadoEmpleado || 0);
   const horas = Math.floor(totalMinutos / 60);
@@ -1725,7 +1859,23 @@ const tiempoRealFormateado = computed(() => {
   if (minutos === 0) return `${horas} ${horas === 1 ? 'h' : 'h'}`;
   return `${horas}h ${minutos}min`;
 });
-</script> 
+</script>
+
+<style scoped>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style> 
 ================================= 
 components\TarjetaModal.vue 
 ================================= 
@@ -1739,16 +1889,34 @@ components\TarjetaModal.vue
       </div>
       
       <div class="p-4 space-y-4">
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center flex-wrap gap-2">
           <span class="px-2 py-1 rounded-full text-xs font-medium" :class="prioridadColor">
             {{ prioridadTexto }}
           </span>
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
+            <!-- Estado de la tarea -->
             <span class="text-xs px-2 py-1 rounded-full" :class="estadoColor">
               {{ estadoTexto }}
             </span>
+            
+            <!-- Estado de progreso (activa/pausada) - SOLO para tareas en progreso -->
+            <span v-if="tarjeta.estado === 'en_progreso'" 
+                  class="text-xs px-2 py-1 rounded-full flex items-center gap-1"
+                  :class="tarjeta.estadoProgreso === 'activa' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'">
+              <span v-if="tarjeta.estadoProgreso === 'activa'" class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              <span v-else>⏸️</span>
+              {{ tarjeta.estadoProgreso === 'activa' ? 'En ejecución' : 'Pausada' }}
+            </span>
+            
             <span class="text-sm text-gray-500">Creada: {{ new Date(tarjeta.createdAt).toLocaleDateString() }}</span>
           </div>
+        </div>
+        
+        <div v-if="tarjeta.tiempoSugeridoJefe > 0" class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+          <p class="text-sm text-blue-800">
+            💡 Sugerencia del jefe: 
+            <strong>{{ formatoTiempo(tarjeta.tiempoSugeridoJefe) }}</strong>
+          </p>
         </div>
         
         <p class="text-gray-700">{{ tarjeta.descripcion || 'Sin descripción' }}</p>
@@ -1759,24 +1927,169 @@ components\TarjetaModal.vue
             <span class="font-medium text-gray-800">{{ tarjeta.asignadoA?.nombre || 'Sin asignar' }}</span>
           </div>
           <div>
-            <span class="text-gray-500">Tiempo trabajado:</span>
-            <span class="font-medium text-gray-800">{{ formatoTiempoReal(tarjeta) }}</span>
-          </div>
-          <div>
-            <span class="text-gray-500">Progreso:</span>
-            <span class="font-medium text-gray-800">{{ tarjeta.porcentajeCompletado }}%</span>
-          </div>
-          <div v-if="tarjeta.tiempoEstimadoEmpleado > 0">
-            <span class="text-gray-500">Tiempo estimado:</span>
-            <span class="font-medium text-green-600">{{ formatoTiempo(tarjeta.tiempoEstimadoEmpleado) }}</span>
+            <span class="text-gray-500">Estado:</span>
+            <span class="font-medium" :class="estadoActivo ? 'text-green-600' : 'text-gray-600'">
+              {{ estadoActivo ? '🟢 En progreso' : '⏸️ Pausado' }}
+            </span>
           </div>
         </div>
         
-        <div class="w-full bg-gray-200 rounded-full h-3">
-          <div
-            class="bg-blue-600 rounded-full h-3 transition-all"
-            :style="{ width: `${tarjeta.porcentajeCompletado}%` }"
-          ></div>
+        <!-- Panel de tiempo en tiempo real -->
+        <div v-if="estadoActivo && tiempoEstimado > 0" class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h4 class="font-semibold text-blue-800 mb-3">⏱️ Progreso en Tiempo Real</h4>
+          
+          <div class="grid grid-cols-3 gap-4 text-center mb-4">
+            <div>
+              <div class="text-xs text-gray-500">Tiempo Estimado</div>
+              <div class="text-lg font-bold text-blue-600">{{ formatoTiempo(tiempoEstimado) }}</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500">Tiempo Transcurrido</div>
+              <div class="text-lg font-bold text-green-600">{{ formatoTiempo(tiempoTranscurrido) }}</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500">Tiempo Restante</div>
+              <div class="text-lg font-bold" :class="tiempoRestante < 5 ? 'text-red-600 animate-pulse' : 'text-orange-600'">
+                {{ formatoTiempo(tiempoRestante) }}
+              </div>
+            </div>
+          </div>
+          
+          <div class="relative pt-1">
+            <div class="flex mb-2 items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+                  Progreso Automático
+                </span>
+              </div>
+              <div class="text-right">
+                <span class="text-xs font-semibold inline-block text-blue-600">
+                  {{ porcentajeAutomatico }}%
+                </span>
+              </div>
+            </div>
+            <div class="overflow-hidden h-4 mb-4 text-xs flex rounded bg-blue-200">
+              <div
+                :style="{ width: `${porcentajeAutomatico}%` }"
+                class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-600 transition-all duration-1000"
+              ></div>
+            </div>
+            <p class="text-xs text-gray-500 text-center">
+              El progreso se actualiza automáticamente cada minuto según el tiempo transcurrido
+            </p>
+          </div>
+          
+          <div v-if="tiempoRestante <= 0" class="mt-3 p-2 bg-green-100 text-green-700 rounded text-center text-sm">
+            🎉 ¡Tiempo estimado cumplido! Puedes registrar el progreso manualmente si aún no has completado la tarea.
+          </div>
+        </div>
+        
+        <!-- Progreso manual -->
+        <div v-else class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500">Progreso manual:</span>
+            <span class="font-medium text-gray-800">{{ tarjeta.porcentajeCompletado }}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div
+              class="bg-blue-600 rounded-full h-2 transition-all"
+              :style="{ width: `${tarjeta.porcentajeCompletado}%` }"
+            ></div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-500">Tiempo trabajado:</span>
+              <span class="font-medium ml-1">{{ tiempoRealFormateado }}</span>
+            </div>
+            <div v-if="tarjeta.tiempoEstimadoEmpleado > 0">
+              <span class="text-gray-500">Tiempo estimado:</span>
+              <span class="font-medium text-green-600 ml-1">{{ formatoTiempo(tarjeta.tiempoEstimadoEmpleado) }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Botones de acción -->
+        <div v-if="esAsignadoAMi && tarjeta.estado === 'en_progreso'" class="flex gap-2">
+          <button 
+            v-if="tarjeta.estadoProgreso !== 'activa' && tarjeta.tiempoEstimadoEmpleado === 0"
+            @click="abrirModalIniciarTarea"
+            class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+          >
+            🚀 Establecer tiempo y comenzar
+          </button>
+          <button 
+            v-else-if="tarjeta.estadoProgreso !== 'activa' && tarjeta.tiempoEstimadoEmpleado > 0"
+            @click="reanudarTarea"
+            class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+          >
+            ▶️ Reanudar tarea
+          </button>
+          <button 
+            v-if="tarjeta.estadoProgreso === 'activa'"
+            @click="pausarTarea"
+            class="flex-1 bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700 transition"
+          >
+            ⏸️ Pausar tarea
+          </button>
+          <button 
+            v-if="tarjeta.tiempoEstimadoEmpleado > 0 && tarjeta.estadoProgreso !== 'activa'"
+            @click="abrirModalRegistrarProgreso"
+            class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            📊 Registrar progreso
+          </button>
+        </div>
+        
+        <!-- Modificar tiempo estimado -->
+        <div v-if="esAsignadoAMi && tarjeta.estado === 'en_progreso' && tarjeta.tiempoEstimadoEmpleado > 0 && tarjeta.estadoProgreso !== 'activa'" 
+             class="bg-green-50 p-4 rounded-lg border border-green-200">
+          <h4 class="font-semibold text-gray-800 mb-2">⏱️ Modificar tiempo estimado</h4>
+          <p class="text-xs text-gray-600 mb-3">Puedes modificar el tiempo estimado si es necesario.</p>
+          
+          <div class="flex gap-2 items-end">
+            <div class="flex-1">
+              <div class="flex gap-2">
+                <div class="flex-1">
+                  <input
+                    v-model.number="tiempoEstimadoHoras"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="23"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Horas"
+                  />
+                  <p class="text-xs text-gray-400">Horas (0-23)</p>
+                </div>
+                <div class="flex-1">
+                  <input
+                    v-model.number="tiempoEstimadoMinutos"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="59"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Minutos"
+                  />
+                  <p class="text-xs text-gray-400">Minutos (0-59)</p>
+                </div>
+              </div>
+            </div>
+            <button
+              @click="actualizarTiempoEstimado"
+              :disabled="actualizandoTiempo"
+              class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+            >
+              {{ actualizandoTiempo ? 'Guardando...' : 'Actualizar' }}
+            </button>
+          </div>
+          
+          <div class="mt-3 pt-3 border-t border-green-200">
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">Tu tiempo estimado:</span>
+              <span class="font-medium text-green-700">{{ formatoTiempo(tarjeta.tiempoEstimadoEmpleado) }}</span>
+            </div>
+          </div>
         </div>
         
         <div v-if="tarjeta.calificacion?.puntaje" class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
@@ -1803,7 +2116,6 @@ components\TarjetaModal.vue
         </div>
         
         <div class="flex gap-2 pt-4 border-t border-gray-200 flex-wrap">
-          <!-- Botón auto-asignarse para empleados Y jefes -->
           <button 
             v-if="!tarjeta.asignadoA && (isEmpleado || isJefe) && tarjeta.estado === 'pendiente'" 
             @click="autoAsignar" 
@@ -1812,7 +2124,6 @@ components\TarjetaModal.vue
             Auto-asignarme
           </button>
           
-          <!-- Botón asignar a empleado (solo jefe) -->
           <button 
             v-if="isJefe && !tarjeta.asignadoA && tarjeta.estado === 'pendiente'" 
             @click="abrirAsignarJefe" 
@@ -1821,7 +2132,6 @@ components\TarjetaModal.vue
             Asignar a empleado
           </button>
           
-          <!-- Botón aprobar tarea (solo jefe) -->
           <button 
             v-if="isJefe && tarjeta.estado === 'revision_jefe'" 
             @click="aprobarTarea" 
@@ -1830,7 +2140,6 @@ components\TarjetaModal.vue
             ✅ Aprobar tarea
           </button>
           
-          <!-- Botón calificar (solo cliente) -->
           <button 
             v-if="tarjeta.estado === 'revision_cliente' && isCliente && tarjeta.clienteInfo.userId === authStore.user?._id && !tarjeta.calificacion" 
             @click="abrirCalificar" 
@@ -1861,6 +2170,13 @@ components\TarjetaModal.vue
       :tarjeta="tarjeta"
       @tiempo-establecido="handleTiempoEstablecido"
     />
+    
+    <RegistrarProgresoModal
+      v-if="modalRegistrarProgreso"
+      :tarjeta="tarjeta"
+      @close="modalRegistrarProgreso = false"
+      @updated="handleUpdated"
+    />
   </div>
 </template>
 
@@ -1868,6 +2184,7 @@ components\TarjetaModal.vue
 import { useAuthStore } from '~/stores/auth';
 import { useTarjetasStore } from '~/stores/tarjetas';
 import ModalTiempoEstimado from './ModalTiempoEstimado.vue';
+import RegistrarProgresoModal from './RegistrarProgresoModal.vue';
 
 const props = defineProps({
   tarjeta: {
@@ -1886,13 +2203,26 @@ const isJefe = computed(() => authStore.isJefe);
 const isEmpleado = computed(() => authStore.isEmpleado);
 const isCliente = computed(() => authStore.isCliente);
 
+const esAsignadoAMi = computed(() => {
+  return props.tarjeta.asignadoA && 
+         props.tarjeta.asignadoA._id === authStore.user?._id;
+});
+
+// Estado en tiempo real
+const tiempoEstimado = ref(props.tarjeta.tiempoEstimadoEmpleado || 0);
+const tiempoTranscurrido = ref(0);
+const tiempoRestante = ref(props.tarjeta.tiempoEstimadoEmpleado || 0);
+const porcentajeAutomatico = ref(props.tarjeta.porcentajeCompletado || 0);
+const estadoActivo = ref(props.tarjeta.estadoProgreso === 'activa');
+let intervaloActualizacion = null;
+
 const modalAsignar = ref(false);
 const modalCalificar = ref(false);
 const modalIniciarTarea = ref(false);
+const modalRegistrarProgreso = ref(false);
 const actualizandoTiempo = ref(false);
 const tiempoEstimadoHoras = ref(0);
 const tiempoEstimadoMinutos = ref(0);
-let intervaloProgreso = null;
 
 const prioridadMap = {
   baja: { texto: 'Baja', color: 'bg-gray-100 text-gray-700' },
@@ -1914,8 +2244,14 @@ const prioridadColor = computed(() => prioridadMap[props.tarjeta.prioridad]?.col
 const estadoTexto = computed(() => estadoMap[props.tarjeta.estado]?.texto || props.tarjeta.estado);
 const estadoColor = computed(() => estadoMap[props.tarjeta.estado]?.color || 'bg-gray-100 text-gray-700');
 
+const tiempoRealFormateado = computed(() => {
+  const totalMinutos = (props.tarjeta.horasTotalesReales * 60) + (props.tarjeta.minutosTotalesReales || 0);
+  return formatoTiempo(totalMinutos);
+});
+
 const formatoTiempo = (minutos) => {
-  if (!minutos || minutos === 0) return '0 min';
+  if (!minutos && minutos !== 0) return '0 min';
+  if (minutos === 0) return '0 min';
   const horas = Math.floor(minutos / 60);
   const mins = minutos % 60;
   if (horas === 0) return `${mins} min`;
@@ -1923,9 +2259,54 @@ const formatoTiempo = (minutos) => {
   return `${horas}h ${mins}min`;
 };
 
-const formatoTiempoReal = (tarjeta) => {
-  const totalMinutos = (tarjeta.horasTotalesReales * 60) + (tarjeta.minutosTotalesReales || 0);
-  return formatoTiempo(totalMinutos);
+const actualizarProgresoAutomatico = async () => {
+  if (!estadoActivo.value || tiempoEstimado.value <= 0) return;
+  
+  try {
+    const token = localStorage.getItem('token');
+    const url = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/progreso-automatico`;
+    const response = await $fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (response.estaActiva) {
+      tiempoTranscurrido.value = response.tiempoTranscurrido;
+      tiempoRestante.value = response.tiempoRestante;
+      porcentajeAutomatico.value = response.porcentajeCalculado;
+      
+      if (response.porcentajeCalculado > props.tarjeta.porcentajeCompletado) {
+        props.tarjeta.porcentajeCompletado = response.porcentajeCalculado;
+      }
+    }
+  } catch (error) {
+    console.error('Error actualizando progreso automático:', error);
+  }
+};
+
+const iniciarIntervalo = () => {
+  if (intervaloActualizacion) clearInterval(intervaloActualizacion);
+  intervaloActualizacion = setInterval(() => {
+    actualizarProgresoAutomatico();
+  }, 5000);
+};
+
+const detenerIntervalo = () => {
+  if (intervaloActualizacion) {
+    clearInterval(intervaloActualizacion);
+    intervaloActualizacion = null;
+  }
+};
+
+const inicializarFormularioTiempo = () => {
+  if (props.tarjeta.tiempoEstimadoEmpleado > 0) {
+    const horas = Math.floor(props.tarjeta.tiempoEstimadoEmpleado / 60);
+    const minutos = props.tarjeta.tiempoEstimadoEmpleado % 60;
+    tiempoEstimadoHoras.value = horas;
+    tiempoEstimadoMinutos.value = minutos;
+  } else {
+    tiempoEstimadoHoras.value = 0;
+    tiempoEstimadoMinutos.value = 0;
+  }
 };
 
 const recargarTarea = async () => {
@@ -1936,9 +2317,113 @@ const recargarTarea = async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     Object.assign(props.tarjeta, tareaActualizada);
+    tiempoEstimado.value = props.tarjeta.tiempoEstimadoEmpleado || 0;
+    estadoActivo.value = props.tarjeta.estadoProgreso === 'activa';
+    inicializarFormularioTiempo();
+    
+    if (estadoActivo.value && tiempoEstimado.value > 0) {
+      iniciarIntervalo();
+      await actualizarProgresoAutomatico();
+    } else {
+      detenerIntervalo();
+    }
   } catch (error) {
     console.error('Error recargando tarea:', error);
   }
+};
+
+const actualizarTiempoEstimado = async () => {
+  const totalMinutos = (parseInt(tiempoEstimadoHoras.value) || 0) * 60 + (parseInt(tiempoEstimadoMinutos.value) || 0);
+  
+  if (totalMinutos <= 0) {
+    alert('El tiempo estimado debe ser mayor a 0');
+    return;
+  }
+  
+  actualizandoTiempo.value = true;
+  try {
+    const token = localStorage.getItem('token');
+    const url = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/tiempo-estimado`;
+    const response = await $fetch(url, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: { 
+        tiempoEstimadoHoras: parseInt(tiempoEstimadoHoras.value) || 0, 
+        tiempoEstimadoMinutos: parseInt(tiempoEstimadoMinutos.value) || 0 
+      }
+    });
+    
+    if (response.success) {
+      props.tarjeta.tiempoEstimadoEmpleado = response.tarjeta.tiempoEstimadoEmpleado;
+      props.tarjeta.fechaEstimadaFin = response.tarjeta.fechaEstimadaFin;
+      tiempoEstimado.value = response.tarjeta.tiempoEstimadoEmpleado;
+      alert(`✅ Tiempo estimado actualizado a ${formatoTiempo(totalMinutos)}`);
+      await recargarTarea();
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error al actualizar tiempo estimado');
+  } finally {
+    actualizandoTiempo.value = false;
+  }
+};
+
+const pausarTarea = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const url = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/pausar`;
+    const response = await $fetch(url, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (response.success) {
+      detenerIntervalo();
+      estadoActivo.value = false;
+      await recargarTarea();
+      emit('update');
+      alert('⏸️ Tarea pausada');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error al pausar la tarea');
+  }
+};
+
+const reanudarTarea = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const url = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/reanudar`;
+    console.log('🔄 REANUDAR - Enviando a:', url);
+    
+    const response = await $fetch(url, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    console.log('✅ REANUDAR - Respuesta:', response);
+    
+    if (response.success) {
+      estadoActivo.value = true;
+      await recargarTarea();
+      emit('update');
+      alert('▶️ Tarea reanudada');
+      
+      setTimeout(() => {
+        emit('close');
+      }, 500);
+    }
+  } catch (error) {
+    console.error('❌ Error en reanudar:', error);
+    alert('Error al reanudar la tarea');
+  }
+};
+
+const abrirModalIniciarTarea = () => {
+  modalIniciarTarea.value = true;
+};
+
+const abrirModalRegistrarProgreso = () => {
+  modalRegistrarProgreso.value = true;
 };
 
 const autoAsignar = async () => {
@@ -1984,6 +2469,7 @@ const handleAsignado = async () => {
 
 const handleUpdated = () => {
   modalCalificar.value = false;
+  modalRegistrarProgreso.value = false;
   recargarTarea();
   emit('update');
   setTimeout(() => emit('close'), 500);
@@ -1994,7 +2480,40 @@ const handleTiempoEstablecido = async () => {
   await recargarTarea();
   emit('update');
 };
-</script> 
+
+watch(estadoActivo, (nuevoValor) => {
+  if (nuevoValor && tiempoEstimado.value > 0) {
+    iniciarIntervalo();
+  } else {
+    detenerIntervalo();
+  }
+});
+
+onMounted(() => {
+  inicializarFormularioTiempo();
+  estadoActivo.value = props.tarjeta.estadoProgreso === 'activa';
+  tiempoEstimado.value = props.tarjeta.tiempoEstimadoEmpleado || 0;
+  
+  if (estadoActivo.value && tiempoEstimado.value > 0) {
+    iniciarIntervalo();
+    actualizarProgresoAutomatico();
+  }
+});
+
+onUnmounted(() => {
+  detenerIntervalo();
+});
+</script>
+
+<style scoped>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+</style> 
 ================================= 
 middleware\auth.js 
 ================================= 
@@ -2152,8 +2671,8 @@ pages\index.vue
         </div>
       </div>
       
-      <!-- Contenido para EMPLEADO -->
-      <div v-else-if="authStore.isAuthenticated && isEmpleado">
+      <!-- Contenido para EMPLEADO (y JEFE cuando ve su vista personal) -->
+      <div v-else-if="authStore.isAuthenticated && (isEmpleado || isJefe)">
         <div class="mb-4 flex justify-end gap-2">
           <button
             @click="cargarTareasDisponibles"
@@ -2171,8 +2690,8 @@ pages\index.vue
           </button>
         </div>
         
-        <!-- Estado de Empleados en Tiempo Real -->
-        <div class="mb-6">
+        <!-- Estado de Empleados en Tiempo Real (solo empleados) -->
+        <div v-if="isEmpleado" class="mb-6">
           <EstadoEmpleados />
         </div>
         
@@ -2229,20 +2748,81 @@ pages\index.vue
           </div>
         </div>
         
-        <!-- Tareas en progreso -->
+        <!-- Mis Tareas - Activa y Pausadas -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">⚙️ Mis Tareas en Progreso</h2>
+          <h2 class="text-xl font-bold text-gray-800 mb-4">⚙️ Mis Tareas</h2>
           
-          <div v-if="tareasEnProgreso.length === 0" class="text-center py-8 text-gray-500">
+          <div v-if="tareasEnProgreso.length === 0 && !tareaActiva" class="text-center py-8 text-gray-500">
             No tienes tareas asignadas actualmente
           </div>
           
           <div v-else class="space-y-4">
-            <div v-for="tarea in tareasEnProgreso" :key="tarea._id" class="border border-gray-200 rounded-lg p-4">
+            <!-- Tarea Activa (destacada) -->
+            <div v-if="tareaActiva" class="border-2 border-green-500 bg-green-50 rounded-lg p-4 shadow-md">
               <div class="flex justify-between items-start mb-2">
-                <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
-                <span class="text-xs px-2 py-1 rounded-full" :class="tarea.estadoProgreso === 'activa' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'">
-                  {{ tarea.estadoProgreso === 'activa' ? '▶️ Activa' : '⏸️ Pausada' }}
+                <div class="flex items-center gap-2">
+                  <h3 class="font-bold text-gray-800">{{ tareaActiva.titulo }}</h3>
+                  <span class="text-xs px-2 py-1 rounded-full bg-green-500 text-white flex items-center gap-1">
+                    <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                    ACTIVA
+                  </span>
+                </div>
+                <span :class="prioridadColorClass(tareaActiva.prioridad)" class="px-2 py-0.5 rounded-full text-xs">
+                  {{ prioridadTextoLabel(tareaActiva.prioridad) }}
+                </span>
+              </div>
+              <p class="text-sm text-gray-600 mb-3">{{ tareaActiva.descripcion || 'Sin descripción' }}</p>
+              
+              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                <div>
+                  <span class="text-gray-500">Progreso:</span>
+                  <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                    <div class="bg-green-500 rounded-full h-2" :style="{ width: `${tareaActiva.porcentajeCompletado}%` }"></div>
+                  </div>
+                  <span class="text-xs">{{ tareaActiva.porcentajeCompletado }}%</span>
+                </div>
+                <div>
+                  <span class="text-gray-500">Tiempo estimado:</span>
+                  <span class="font-medium ml-1">{{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}</span>
+                </div>
+              </div>
+              
+              <div class="flex gap-2">
+                <button 
+                  @click="pausarTarea(tareaActiva._id)"
+                  class="flex-1 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition text-sm"
+                >
+                  ⏸️ Pausar
+                </button>
+                <button 
+                  @click="abrirModalProgreso(tareaActiva)"
+                  class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition text-sm"
+                >
+                  📊 Registrar progreso
+                </button>
+              </div>
+              
+              <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 text-sm">
+                <div class="flex items-center gap-2 text-gray-600">
+                  <span>👤 Cliente:</span>
+                  <span class="font-medium">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
+                  <span v-if="tareaActiva.clienteInfo.telefono" class="text-gray-500">📞 {{ tareaActiva.clienteInfo.telefono }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Tareas Pausadas -->
+            <div v-for="tarea in tareasPausadas" :key="tarea._id" 
+                 class="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-2">
+                  <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
+                  <span class="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
+                    <span>⏸️</span> Pausada
+                  </span>
+                </div>
+                <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs">
+                  {{ prioridadTextoLabel(tarea.prioridad) }}
                 </span>
               </div>
               <p class="text-sm text-gray-600 mb-3">{{ tarea.descripcion || 'Sin descripción' }}</p>
@@ -2257,31 +2837,24 @@ pages\index.vue
                 </div>
                 <div>
                   <span class="text-gray-500">Tiempo trabajado:</span>
-                  <span class="font-medium ml-1">{{ formatoTiempoReal(tarea) }}</span>
+                  <span class="font-medium ml-1">{{ formatTiempoReal(tarea) }}</span>
                 </div>
               </div>
               
               <div class="flex gap-2">
                 <button 
-                  v-if="tarea.estadoProgreso !== 'activa' && tarea.tiempoEstimadoEmpleado === 0"
+                  v-if="tarea.tiempoEstimadoEmpleado === 0"
                   @click="abrirModalTiempo(tarea)"
                   class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition text-sm"
                 >
                   🚀 Establecer tiempo
                 </button>
                 <button 
-                  v-else-if="tarea.estadoProgreso !== 'activa' && tarea.tiempoEstimadoEmpleado > 0"
+                  v-else
                   @click="reanudarTarea(tarea._id)"
                   class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition text-sm"
                 >
                   ▶️ Reanudar
-                </button>
-                <button 
-                  v-if="tarea.estadoProgreso === 'activa'"
-                  @click="pausarTarea(tarea._id)"
-                  class="flex-1 bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700 transition text-sm"
-                >
-                  ⏸️ Pausar
                 </button>
                 <button 
                   @click="abrirModalProgreso(tarea)"
@@ -2617,15 +3190,19 @@ const loadingPublica = ref(false);
 const mensajePublico = ref('');
 const mensajePublicoError = ref(false);
 
-// Tareas disponibles para empleado
+// Tareas disponibles
 const tareasDisponibles = ref([]);
 const cargandoDisponibles = ref(false);
 const cargandoTarea = ref(false);
 
+// Intervalos
+let pollingInterval = null;
+let intervaloTareasActivas = null;
+
 // Computed para empleado
 const tareasEnProgreso = computed(() => {
   return tarjetasStore.tarjetas.filter(t => 
-    t.estado !== 'finalizada' && t.estado !== 'revision_cliente'
+    t.estado === 'en_progreso'
   );
 });
 
@@ -2635,25 +3212,44 @@ const tareasCompletadas = computed(() => {
   );
 });
 
+const tareaActiva = computed(() => {
+  return tarjetasStore.tarjetas.find(t => 
+    t.estadoProgreso === 'activa' && 
+    t.estado === 'en_progreso'
+  );
+});
+
+const tareasPausadas = computed(() => {
+  if (!tareaActiva.value) {
+    return tareasEnProgreso.value;
+  }
+  return tareasEnProgreso.value.filter(t => t._id !== tareaActiva.value._id);
+});
+
 // Computed para cliente
 const misSolicitudes = computed(() => {
   return tarjetasStore.tarjetas;
 });
 
-// Métricas para jefe
+// Métricas jefe
 const eficienciaGeneral = ref(0);
 const totalHorasExtras = ref(0);
 const calificacionGeneral = ref(0);
 
 // Funciones de utilidad
-const formatoTiempoReal = (tarea) => {
+const formatTiempo = (minutos) => {
+  if (!minutos && minutos !== 0) return '0 min';
+  if (minutos === 0) return '0 min';
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+  if (horas === 0) return `${mins} min`;
+  if (mins === 0) return `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+  return `${horas}h ${mins}min`;
+};
+
+const formatTiempoReal = (tarea) => {
   const totalMinutos = (tarea.horasTotalesReales * 60) + (tarea.minutosTotalesReales || 0);
-  const horas = Math.floor(totalMinutos / 60);
-  const minutos = totalMinutos % 60;
-  if (totalMinutos === 0) return '0 min';
-  if (horas === 0) return `${minutos} min`;
-  if (minutos === 0) return `${horas} ${horas === 1 ? 'h' : 'h'}`;
-  return `${horas}h ${minutos}min`;
+  return formatTiempo(totalMinutos);
 };
 
 const prioridadColorClass = (prioridad) => {
@@ -2698,14 +3294,14 @@ const estadoColorClass = (estado) => {
   return map[estado] || 'bg-gray-100 text-gray-700';
 };
 
-// Acciones
+// Recargar datos
 const recargarDatos = async () => {
   await tarjetasStore.fetchTarjetas();
   if (isJefe.value) {
     await tarjetasStore.fetchEstadisticas();
     cargarMetricas();
   }
-  if (isEmpleado.value) {
+  if (isEmpleado.value || isJefe.value) {
     await cargarTareasDisponibles();
   }
 };
@@ -2787,14 +3383,17 @@ const reanudarTarea = async (id) => {
   try {
     const token = localStorage.getItem('token');
     const url = `${config.public.apiBase}/tarjetas/${id}/reanudar`;
-    await $fetch(url, {
+    const response = await $fetch(url, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` }
     });
-    await recargarDatos();
-    alert('▶️ Tarea reanudada');
+    if (response.success) {
+      await recargarDatos();
+      alert('▶️ Tarea reanudada');
+    }
   } catch (error) {
-    alert('Error al reanudar');
+    console.error('Error:', error);
+    alert('Error al reanudar la tarea');
   }
 };
 
@@ -2815,7 +3414,6 @@ const handleTiempoEstablecido = async () => {
   await recargarDatos();
 };
 
-// Métricas para jefe
 const cargarMetricas = () => {
   const tarjetas = tarjetasStore.tarjetas;
   const completadas = tarjetas.filter(t => t.estado === 'finalizada');
@@ -2827,6 +3425,42 @@ const cargarMetricas = () => {
     return sum + (t.registroHoras?.filter(r => r.esHoraExtra).reduce((s, r) => s + (r.horasTrabajadas || 0), 0) || 0);
   }, 0);
   calificacionGeneral.value = calificadas.length ? (calificadas.reduce((sum, t) => sum + (t.calificacion?.puntaje || 0), 0) / calificadas.length).toFixed(1) : '0.0';
+};
+
+// ✅ NUEVA FUNCIÓN: Actualizar progreso automático en BD
+const actualizarProgresoEnBD = async () => {
+  if (!tareaActiva.value || !authStore.isAuthenticated) return;
+  
+  try {
+    const token = localStorage.getItem('token');
+    const url = `${config.public.apiBase}/tarjetas/${tareaActiva.value._id}/progreso-automatico`;
+    console.log('🔄 [PROGRESO-AUTOMATICO] Llamando a:', url);
+    
+    const response = await $fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    console.log('✅ [PROGRESO-AUTOMATICO] Respuesta:', response);
+    
+    // Si hubo cambio en el estado (por ejemplo, pasó a revisión), recargar datos
+    if (response.huboCambio || response.estado !== tareaActiva.value.estado) {
+      console.log('📢 Hubo cambio en la tarea, recargando datos...');
+      await recargarDatos();
+    }
+  } catch (error) {
+    console.error('❌ Error en progreso automático:', error);
+  }
+};
+
+// Iniciar intervalo de actualización de tareas activas
+const iniciarIntervaloTareasActivas = () => {
+  if (intervaloTareasActivas) clearInterval(intervaloTareasActivas);
+  intervaloTareasActivas = setInterval(async () => {
+    if (tareaActiva.value && authStore.isAuthenticated) {
+      console.log('🔄 Actualizando progreso de tarea activa en BD...');
+      await actualizarProgresoEnBD();
+    }
+  }, 5000);
 };
 
 // Solicitud pública
@@ -2842,8 +3476,6 @@ const handleSolicitudPublica = async (event) => {
   
   try {
     const url = 'http://localhost:5000/api/solicitudes/publicas';
-    console.log('📤 Enviando solicitud a:', url);
-    
     const payload = {
       titulo: solicitudPublica.value.titulo,
       descripcion: solicitudPublica.value.descripcion,
@@ -2864,7 +3496,6 @@ const handleSolicitudPublica = async (event) => {
     });
     
     const data = await response.json();
-    console.log('✅ Respuesta:', data);
     
     if (response.ok && data.success) {
       mensajePublico.value = '✅ ¡Solicitud enviada exitosamente! Un empleado se asignará a tu solicitud.';
@@ -2894,24 +3525,20 @@ const handleSolicitudPublica = async (event) => {
   }
 };
 
-// Función para refrescar tareas disponibles (para WebSocket)
 const refreshTareasDisponibles = async () => {
   await cargarTareasDisponibles();
 };
 
-// Exponer función global para WebSocket
 if (process.client) {
   window.refreshTareasDisponibles = refreshTareasDisponibles;
 }
-
-// Polling
-let pollingInterval = null;
 
 onMounted(async () => {
   authStore.loadFromStorage();
   
   if (authStore.isAuthenticated) {
     await recargarDatos();
+    iniciarIntervaloTareasActivas();
   }
   
   pollingInterval = setInterval(async () => {
@@ -2923,6 +3550,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (pollingInterval) clearInterval(pollingInterval);
+  if (intervaloTareasActivas) clearInterval(intervaloTareasActivas);
 });
 
 const logout = () => {
@@ -2936,7 +3564,23 @@ const abrirModalSolicitud = () => {
 const abrirModalTareaExtra = () => {
   modalTareaExtra.value = true;
 };
-</script> 
+</script>
+
+<style scoped>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style> 
 ================================= 
 pages\login.vue 
 ================================= 
@@ -3231,6 +3875,7 @@ pages\test-auth.vue
 
 <script setup>
 const authStore = useAuthStore();
+const config = useRuntimeConfig();
 const token = ref(null);
 const user = ref(null);
 const apiResult = ref(null);
@@ -3247,12 +3892,17 @@ const testApi = async () => {
       Authorization: `Bearer ${token.value}`
     };
     
-    const result = await $fetch('/api/tarjetas', { headers });
+    // ✅ CORREGIDO: URL completa
+    const url = `${config.public.apiBase}/tarjetas`;
+    console.log('📤 Probando API en:', url);
+    
+    const result = await $fetch(url, { headers });
     apiResult.value = result;
     apiError.value = null;
   } catch (error) {
     apiError.value = error;
     apiResult.value = null;
+    console.error('Error en testApi:', error);
   }
 };
 </script> 
@@ -3401,7 +4051,6 @@ export default defineNuxtPlugin(() => {
       const authStore = useAuthStore();
       const tarjetasStore = useTarjetasStore();
       
-      // Variable para almacenar función de actualización de estado
       let updateEstadoCallback = null;
       
       socket.on('connect', () => {
@@ -3422,8 +4071,7 @@ export default defineNuxtPlugin(() => {
       // Evento para nueva tarea disponible
       socket.on('nueva-tarea-disponible', (data) => {
         console.log('📢 Nueva tarea disponible:', data.tarea?.titulo);
-        if (authStore.isEmpleado) {
-          // Refrescar tareas disponibles
+        if (authStore.isEmpleado || authStore.isJefe) {
           if (window.refreshTareasDisponibles) {
             window.refreshTareasDisponibles();
           }
@@ -3473,9 +4121,31 @@ export default defineNuxtPlugin(() => {
         console.log('📊 Estado actualizado:', data);
         tarjetasStore.fetchTarjetas();
         
-        // Llamar callback de actualización de estado en tiempo real
         if (updateEstadoCallback) {
           updateEstadoCallback(data);
+        }
+      });
+      
+      // Evento para estado general actualizado (cuando cambia de estado)
+      socket.on('estado-general-actualizado', (data) => {
+        console.log('🔄 Estado general actualizado:', data);
+        tarjetasStore.fetchTarjetas();
+        
+        if (updateEstadoCallback) {
+          updateEstadoCallback(data);
+        }
+      });
+      
+      // Evento para tarea completada automáticamente
+      socket.on('tarea-completada-automaticamente', (data) => {
+        console.log('🎉 Tarea completada automáticamente:', data);
+        tarjetasStore.fetchTarjetas();
+        
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Tarea completada', {
+            body: `${data.titulo}\n${data.mensaje}`,
+            icon: '/favicon.ico'
+          });
         }
       });
       
@@ -3492,7 +4162,7 @@ export default defineNuxtPlugin(() => {
         }
       });
       
-      // Evento para tarea iniciada (tiempo real)
+      // Evento para tarea iniciada
       socket.on('tarea-iniciada-tiempo-real', (data) => {
         console.log('🚀 Tarea iniciada:', data);
         tarjetasStore.fetchTarjetas();
@@ -3528,6 +4198,21 @@ export default defineNuxtPlugin(() => {
             tipo: 'reanudada',
             ...data
           });
+        }
+      });
+      
+      // Evento para tarea lista para revisión
+      socket.on('tarea-lista-para-revision', (data) => {
+        console.log('👔 Tarea lista para revisión:', data);
+        tarjetasStore.fetchTarjetas();
+        
+        if (authStore.isJefe) {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Tarea lista para revisión', {
+              body: `La tarea "${data.titulo}" completada por ${data.empleadoNombre} está lista para revisión`,
+              icon: '/favicon.ico'
+            });
+          }
         }
       });
       
@@ -3606,7 +4291,6 @@ export default defineNuxtPlugin(() => {
         Notification.requestPermission();
       }
       
-      // Exponer función para registrar callback de actualización
       window.registerEstadoUpdateCallback = (callback) => {
         updateEstadoCallback = callback;
       };
@@ -4252,11 +4936,12 @@ export const useTarjetasStore = defineStore('tarjetas', {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/auto-asignar`;
         const headers = this.getAuthHeaders();
-        await $fetch(url, {
+        const result = await $fetch(url, {
           method: 'PUT',
           headers
         });
         await this.fetchTarjetas();
+        return result;
       } catch (error) {
         console.error('Error:', error);
         throw error;
@@ -4338,4 +5023,4 @@ export const useTarjetasStore = defineStore('tarjetas', {
     }
   }
 }); 
-Total archivos: 28 
+Total archivos: 30 

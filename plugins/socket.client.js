@@ -20,7 +20,6 @@ export default defineNuxtPlugin(() => {
       const authStore = useAuthStore();
       const tarjetasStore = useTarjetasStore();
       
-      // Variable para almacenar función de actualización de estado
       let updateEstadoCallback = null;
       
       socket.on('connect', () => {
@@ -41,8 +40,7 @@ export default defineNuxtPlugin(() => {
       // Evento para nueva tarea disponible
       socket.on('nueva-tarea-disponible', (data) => {
         console.log('📢 Nueva tarea disponible:', data.tarea?.titulo);
-        if (authStore.isEmpleado) {
-          // Refrescar tareas disponibles
+        if (authStore.isEmpleado || authStore.isJefe) {
           if (window.refreshTareasDisponibles) {
             window.refreshTareasDisponibles();
           }
@@ -92,9 +90,31 @@ export default defineNuxtPlugin(() => {
         console.log('📊 Estado actualizado:', data);
         tarjetasStore.fetchTarjetas();
         
-        // Llamar callback de actualización de estado en tiempo real
         if (updateEstadoCallback) {
           updateEstadoCallback(data);
+        }
+      });
+      
+      // Evento para estado general actualizado (cuando cambia de estado)
+      socket.on('estado-general-actualizado', (data) => {
+        console.log('🔄 Estado general actualizado:', data);
+        tarjetasStore.fetchTarjetas();
+        
+        if (updateEstadoCallback) {
+          updateEstadoCallback(data);
+        }
+      });
+      
+      // Evento para tarea completada automáticamente
+      socket.on('tarea-completada-automaticamente', (data) => {
+        console.log('🎉 Tarea completada automáticamente:', data);
+        tarjetasStore.fetchTarjetas();
+        
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Tarea completada', {
+            body: `${data.titulo}\n${data.mensaje}`,
+            icon: '/favicon.ico'
+          });
         }
       });
       
@@ -111,7 +131,7 @@ export default defineNuxtPlugin(() => {
         }
       });
       
-      // Evento para tarea iniciada (tiempo real)
+      // Evento para tarea iniciada
       socket.on('tarea-iniciada-tiempo-real', (data) => {
         console.log('🚀 Tarea iniciada:', data);
         tarjetasStore.fetchTarjetas();
@@ -147,6 +167,21 @@ export default defineNuxtPlugin(() => {
             tipo: 'reanudada',
             ...data
           });
+        }
+      });
+      
+      // Evento para tarea lista para revisión
+      socket.on('tarea-lista-para-revision', (data) => {
+        console.log('👔 Tarea lista para revisión:', data);
+        tarjetasStore.fetchTarjetas();
+        
+        if (authStore.isJefe) {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Tarea lista para revisión', {
+              body: `La tarea "${data.titulo}" completada por ${data.empleadoNombre} está lista para revisión`,
+              icon: '/favicon.ico'
+            });
+          }
         }
       });
       
@@ -225,7 +260,6 @@ export default defineNuxtPlugin(() => {
         Notification.requestPermission();
       }
       
-      // Exponer función para registrar callback de actualización
       window.registerEstadoUpdateCallback = (callback) => {
         updateEstadoCallback = callback;
       };

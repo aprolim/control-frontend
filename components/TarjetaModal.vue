@@ -518,8 +518,7 @@ const reanudarTarea = async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    console.log('✅ REANUDAR - Respuesta del backend:', response);
-    console.log('   - estadoProgreso en respuesta:', response.tarjeta?.estadoProgreso || response.estadoProgreso);
+    console.log('✅ REANUDAR - Respuesta:', response);
     
     if (response.success) {
       estadoActivo.value = true;
