@@ -15,10 +15,15 @@
     "@vueuse/nuxt": "^10.7.2",
     "chart.js": "^4.4.1",
     "dayjs": "^1.11.10",
+    "file-saver": "^2.0.5",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "nuxt": "3.10.3",
     "pinia": "^2.1.7",
     "socket.io-client": "^4.8.3",
     "vue-chartjs": "^5.2.0",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "xlsx": "^0.18.5"
   }
 }

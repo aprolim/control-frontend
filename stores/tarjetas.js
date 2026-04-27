@@ -52,7 +52,20 @@ export const useTarjetasStore = defineStore('tarjetas', {
         const headers = this.getAuthHeaders();
         if (!headers.Authorization) throw new Error('No autenticado');
         
-        this.tarjetas = await $fetch(url, { headers });
+        const response = await $fetch(url, { headers });
+        
+        // Asegurar que todas las tareas tengan los campos necesarios para horas
+        this.tarjetas = response.map(tarea => ({
+          ...tarea,
+          // Asegurar campos de tiempo
+          tiempoAcumulado: tarea.tiempoAcumulado || 0,
+          horasTotalesReales: tarea.horasTotalesReales || 0,
+          minutosTotalesReales: tarea.minutosTotalesReales || 0,
+          tiempoEstimadoEmpleado: tarea.tiempoEstimadoEmpleado || 0,
+          porcentajeCompletado: tarea.porcentajeCompletado || 0,
+          registroHoras: tarea.registroHoras || []
+        }));
+        
       } catch (error) {
         console.error('Error fetching tarjetas:', error);
         if (error.statusCode === 401) {

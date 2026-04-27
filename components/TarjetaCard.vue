@@ -35,15 +35,15 @@
     
     <div class="space-y-2">
       <div class="flex justify-between text-xs text-gray-500">
-        <span>Progreso: {{ tarjeta.porcentajeCompletado }}%</span>
-        <span>⏱️ {{ tiempoRealFormateado }} / {{ tiempoEstimadoFormateado }}</span>
+        <span>Progreso: {{ progresoMostrado }}%</span>
+        <span>⏱️ {{ tiempoRealMostrado }} / {{ tiempoEstimadoFormateado }}</span>
       </div>
       
       <div class="w-full bg-gray-200 rounded-full h-2">
         <div
-          class="rounded-full h-2 transition-all"
+          class="rounded-full h-2 transition-all duration-500"
           :class="progresoColorBarra"
-          :style="{ width: `${tarjeta.porcentajeCompletado}%` }"
+          :style="{ width: `${progresoMostrado}%` }"
         ></div>
       </div>
       
@@ -88,12 +88,17 @@
 </template>
 
 <script setup>
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+
 const props = defineProps({
   tarjeta: {
     type: Object,
     required: true
   }
 });
+
+const forceUpdate = ref(0);
+let intervaloActualizacion = null;
 
 const prioridadMap = {
   baja: { texto: 'Baja', color: 'bg-gray-100 text-gray-700', border: 'border-gray-300' },
@@ -134,15 +139,83 @@ const tiempoEstimadoFormateado = computed(() => {
   return `${horas}h ${minutos}min`;
 });
 
-const tiempoRealFormateado = computed(() => {
-  const totalMinutos = (props.tarjeta.horasTotalesReales * 60) + (props.tarjeta.minutosTotalesReales || 0);
-  const horas = Math.floor(totalMinutos / 60);
-  const minutos = totalMinutos % 60;
+const calcularTiempoTotalTrabajado = () => {
+  let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
   
-  if (totalMinutos === 0) return '0 min';
-  if (horas === 0) return `${minutos} min`;
-  if (minutos === 0) return `${horas} ${horas === 1 ? 'h' : 'h'}`;
-  return `${horas}h ${minutos}min`;
+  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+    const ahora = new Date();
+    const inicio = new Date(props.tarjeta.fechaUltimaReanudacion);
+    const minutosDesdeReanudacion = Math.floor((ahora - inicio) / 1000 / 60);
+    tiempoTotal += minutosDesdeReanudacion;
+  }
+  
+  return tiempoTotal;
+};
+
+const formatoTiempo = (minutos) => {
+  if (!minutos && minutos !== 0) return '0 min';
+  if (minutos === 0) return '0 min';
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+  if (horas === 0) return `${mins} min`;
+  if (mins === 0) return `${horas} ${horas === 1 ? 'h' : 'h'}`;
+  return `${horas}h ${mins}min`;
+};
+
+const tiempoRealMostrado = computed(() => {
+  const tiempoTotal = calcularTiempoTotalTrabajado();
+  return formatoTiempo(tiempoTotal);
+});
+
+const progresoMostrado = computed(() => {
+  const tiempoEstimado = props.tarjeta.tiempoEstimadoEmpleado || 0;
+  
+  if (tiempoEstimado > 0) {
+    const tiempoTotal = calcularTiempoTotalTrabajado();
+    const progresoPorTiempo = Math.min(100, Math.floor((tiempoTotal / tiempoEstimado) * 100));
+    return Math.max(props.tarjeta.porcentajeCompletado || 0, progresoPorTiempo);
+  }
+  
+  return props.tarjeta.porcentajeCompletado || 0;
+});
+
+const iniciarIntervalo = () => {
+  if (intervaloActualizacion) clearInterval(intervaloActualizacion);
+  
+  if (props.tarjeta.estadoProgreso === 'activa') {
+    intervaloActualizacion = setInterval(() => {
+      forceUpdate.value++;
+    }, 1000);
+  }
+};
+
+const detenerIntervalo = () => {
+  if (intervaloActualizacion) {
+    clearInterval(intervaloActualizacion);
+    intervaloActualizacion = null;
+  }
+};
+
+watch(() => props.tarjeta.estadoProgreso, (nuevoEstado) => {
+  if (nuevoEstado === 'activa') {
+    iniciarIntervalo();
+  } else {
+    detenerIntervalo();
+  }
+}, { immediate: true });
+
+watch(() => props.tarjeta, () => {
+  forceUpdate.value++;
+}, { deep: true });
+
+onMounted(() => {
+  if (props.tarjeta.estadoProgreso === 'activa') {
+    iniciarIntervalo();
+  }
+});
+
+onUnmounted(() => {
+  detenerIntervalo();
 });
 </script>
 

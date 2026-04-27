@@ -473,6 +473,342 @@ const calificar = async () => {
 };
 </script> 
 ================================= 
+components\ConfiguracionAutoCierre.vue 
+================================= 
+ 
+<template>
+  <div class="configuracion-auto-cierre">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+            <span class="text-white text-lg">⚙️</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-gray-800">Auto-cierre de Tareas</h2>
+            <p class="text-sm text-gray-500">Configura cuándo y cómo se auto-finalizan las tareas</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="p-6">
+        <!-- Switch principal -->
+        <div class="mb-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div>
+            <h3 class="font-semibold text-gray-800">🔘 Habilitar Auto-cierre</h3>
+            <p class="text-sm text-gray-500">Las tareas se revisarán automáticamente según los días configurados</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" v-model="configuracion.habilitado" class="sr-only peer" @change="guardarConfiguracion">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+        
+        <!-- Columnas a revisar -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">📋 ¿Qué columnas revisar?</label>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2">
+              <input type="radio" v-model="configuracion.revisarColumna" value="revision_cliente" class="text-blue-600">
+              <span>Solo Revisión Cliente</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" v-model="configuracion.revisarColumna" value="revision_jefe" class="text-blue-600">
+              <span>Solo Revisión Jefe</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" v-model="configuracion.revisarColumna" value="ambas" class="text-blue-600">
+              <span>Ambas columnas</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <!-- Días máximos cliente -->
+          <div class="bg-blue-50 rounded-lg p-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              👥 Días máximos para Cliente
+            </label>
+            <div class="flex items-center gap-3">
+              <input
+                v-model.number="configuracion.diasMaximosCliente"
+                type="number"
+                min="1"
+                max="30"
+                class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                @change="guardarConfiguracion"
+              />
+              <span class="text-gray-600">días</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Tiempo que tiene el cliente para calificar</p>
+          </div>
+          
+          <!-- Días máximos jefe -->
+          <div class="bg-orange-50 rounded-lg p-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              👔 Días máximos para Jefe
+            </label>
+            <div class="flex items-center gap-3">
+              <input
+                v-model.number="configuracion.diasMaximosJefe"
+                type="number"
+                min="1"
+                max="15"
+                class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                @change="guardarConfiguracion"
+              />
+              <span class="text-gray-600">días</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Tiempo que tiene el jefe para aprobar</p>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <!-- Acción automática -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">⚡ Acción al vencer</label>
+            <select
+              v-model="configuracion.accionAuto"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              @change="guardarConfiguracion"
+            >
+              <option value="finalizar">✅ Finalizar tarea automáticamente</option>
+              <option value="notificar_jefe">📢 Notificar al jefe</option>
+              <option value="escalar">🔄 Reabrir y reasignar</option>
+              <option value="reabrir">🔁 Reabrir la tarea</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">
+              {{ textoAccion }}
+            </p>
+          </div>
+          
+          <!-- Notificar antes -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">🔔 Notificar antes de vencer</label>
+            <div class="flex items-center gap-3">
+              <input
+                v-model.number="configuracion.notificarAntesDias"
+                type="number"
+                min="0"
+                max="5"
+                class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                @change="guardarConfiguracion"
+              />
+              <span class="text-gray-600">días antes</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Enviar recordatorio al cliente y empleado</p>
+          </div>
+        </div>
+        
+        <!-- Excepciones de empleados -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">👥 Empleados excluidos</label>
+          <select
+            v-model="empleadoSeleccionado"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2"
+          >
+            <option value="">-- Seleccionar empleado --</option>
+            <option v-for="emp in empleados" :key="emp._id" :value="emp._id">
+              {{ emp.nombre }} - {{ emp.email }}
+            </option>
+          </select>
+          <button
+            @click="agregarExcepcion"
+            :disabled="!empleadoSeleccionado"
+            class="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition mb-3"
+          >
+            + Agregar excepción
+          </button>
+          
+          <div class="flex flex-wrap gap-2">
+            <div
+              v-for="empId in configuracion.excepcionesEmpleados"
+              :key="empId"
+              class="bg-gray-100 rounded-full px-3 py-1 text-sm flex items-center gap-2"
+            >
+              <span>{{ getEmpleadoNombre(empId) }}</span>
+              <button @click="removerExcepcion(empId)" class="text-red-500 hover:text-red-700">✕</button>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Los empleados excluidos no serán afectados por el auto-cierre</p>
+        </div>
+        
+        <!-- Resumen de configuración -->
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+          <h4 class="font-semibold text-gray-800 mb-2">📊 Resumen de configuración</h4>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <div class="text-gray-600">Estado:</div>
+            <div :class="configuracion.habilitado ? 'text-green-600 font-medium' : 'text-red-600'">
+              {{ configuracion.habilitado ? 'Activo' : 'Inactivo' }}
+            </div>
+            <div class="text-gray-600">Columnas revisadas:</div>
+            <div>{{ textoColumna }}</div>
+            <div class="text-gray-600">Tiempo cliente:</div>
+            <div>{{ configuracion.diasMaximosCliente }} días</div>
+            <div class="text-gray-600">Tiempo jefe:</div>
+            <div>{{ configuracion.diasMaximosJefe }} días</div>
+            <div class="text-gray-600">Acción:</div>
+            <div>{{ textoAccion }}</div>
+            <div class="text-gray-600">Notificación:</div>
+            <div>{{ configuracion.notificarAntesDias === 0 ? 'No notificar' : configuracion.notificarAntesDias + ' días antes' }}</div>
+            <div class="text-gray-600">Excluidos:</div>
+            <div>{{ configuracion.excepcionesEmpleados?.length || 0 }} empleados</div>
+          </div>
+        </div>
+        
+        <!-- Botón de guardar -->
+        <button
+          @click="guardarConfiguracion"
+          :disabled="guardando"
+          class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition font-medium disabled:opacity-50"
+        >
+          {{ guardando ? 'Guardando...' : '💾 Guardar configuración' }}
+        </button>
+      </div>
+    </div>
+    
+    <!-- Estadísticas de auto-cierre -->
+    <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+        <h3 class="font-semibold text-gray-800">📈 Estadísticas de Auto-cierre</h3>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="bg-purple-50 rounded-lg p-4 text-center">
+            <p class="text-2xl font-bold text-purple-600">{{ estadisticas.totalAutoFinalizadas || 0 }}</p>
+            <p class="text-sm text-gray-600">Tareas auto-finalizadas</p>
+            <p class="text-xs text-gray-400">Últimos 30 días</p>
+          </div>
+          <div class="bg-blue-50 rounded-lg p-4 text-center">
+            <p class="text-2xl font-bold text-blue-600">{{ estadisticas.clientesSinRevisar || 0 }}</p>
+            <p class="text-sm text-gray-600">Clientes sin revisión</p>
+            <p class="text-xs text-gray-400">Tareas pendientes</p>
+          </div>
+          <div class="bg-green-50 rounded-lg p-4 text-center">
+            <p class="text-2xl font-bold text-green-600">{{ configuracion.diasMaximosCliente || 5 }}</p>
+            <p class="text-sm text-gray-600">Días configurados</p>
+            <p class="text-xs text-gray-400">Para revisión de cliente</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useRuntimeConfig } from '#app';
+
+const config = useRuntimeConfig();
+const guardando = ref(false);
+const empleadoSeleccionado = ref('');
+const empleados = ref([]);
+
+const configuracion = ref({
+  revisarColumna: 'revision_cliente',
+  diasMaximosCliente: 5,
+  diasMaximosJefe: 3,
+  accionAuto: 'finalizar',
+  notificarAntesDias: 1,
+  habilitado: true,
+  excepcionesEmpleados: []
+});
+
+const estadisticas = ref({
+  totalAutoFinalizadas: 0,
+  clientesSinRevisar: 0
+});
+
+const textoColumna = computed(() => {
+  const mapa = {
+    revision_cliente: 'Solo Revisión Cliente',
+    revision_jefe: 'Solo Revisión Jefe',
+    ambas: 'Ambas columnas'
+  };
+  return mapa[configuracion.value.revisarColumna] || 'No definido';
+});
+
+const textoAccion = computed(() => {
+  const mapa = {
+    finalizar: 'Finalizar tarea automáticamente',
+    notificar_jefe: 'Notificar al jefe',
+    escalar: 'Reabrir y reasignar',
+    reabrir: 'Reabrir la tarea'
+  };
+  return mapa[configuracion.value.accionAuto] || '';
+});
+
+const cargarConfiguracion = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await $fetch(`${config.public.apiBase}/configuracion/auto-cierre`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    configuracion.value = response.configuracion;
+    empleados.value = response.empleados;
+  } catch (error) {
+    console.error('Error cargando configuración:', error);
+  }
+};
+
+const cargarEstadisticas = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await $fetch(`${config.public.apiBase}/configuracion/auto-cierre/estadisticas`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    estadisticas.value = response;
+  } catch (error) {
+    console.error('Error cargando estadísticas:', error);
+  }
+};
+
+const guardarConfiguracion = async () => {
+  guardando.value = true;
+  try {
+    const token = localStorage.getItem('token');
+    await $fetch(`${config.public.apiBase}/configuracion/auto-cierre`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: configuracion.value
+    });
+    
+    alert('✅ Configuración guardada exitosamente');
+  } catch (error) {
+    console.error('Error guardando configuración:', error);
+    alert('Error al guardar la configuración');
+  } finally {
+    guardando.value = false;
+  }
+};
+
+const agregarExcepcion = () => {
+  if (empleadoSeleccionado.value && !configuracion.value.excepcionesEmpleados.includes(empleadoSeleccionado.value)) {
+    configuracion.value.excepcionesEmpleados.push(empleadoSeleccionado.value);
+    empleadoSeleccionado.value = '';
+    guardarConfiguracion();
+  }
+};
+
+const removerExcepcion = (empId) => {
+  configuracion.value.excepcionesEmpleados = configuracion.value.excepcionesEmpleados.filter(id => id !== empId);
+  guardarConfiguracion();
+};
+
+const getEmpleadoNombre = (empId) => {
+  const emp = empleados.value.find(e => e._id === empId);
+  return emp?.nombre || empId;
+};
+
+onMounted(() => {
+  cargarConfiguracion();
+  cargarEstadisticas();
+});
+</script> 
+================================= 
 components\DashboardEstadisticas.vue 
 ================================= 
  
@@ -1127,6 +1463,313 @@ defineExpose({
 }
 </style> 
 ================================= 
+components\KanbanBoardProfesional.vue 
+================================= 
+ 
+<template>
+  <div class="kanban-profesional">
+    <!-- Header con estadísticas rápidas -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+            <span class="text-white text-lg">📌</span>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-gray-800">Tablero Kanban</h1>
+            <p class="text-sm text-gray-500">Arrastra las tareas entre columnas para actualizar su estado</p>
+          </div>
+        </div>
+        
+        <div class="flex gap-3">
+          <div class="flex gap-2">
+            <div class="bg-blue-50 rounded-lg px-3 py-1.5 text-sm">
+              <span class="text-blue-600">Total:</span>
+              <span class="font-semibold ml-1 text-blue-700">{{ totalTareas }}</span>
+            </div>
+            <div class="bg-green-50 rounded-lg px-3 py-1.5 text-sm">
+              <span class="text-green-600">Completadas:</span>
+              <span class="font-semibold ml-1 text-green-700">{{ tareasCompletadas }}</span>
+            </div>
+            <div class="bg-orange-50 rounded-lg px-3 py-1.5 text-sm">
+              <span class="text-orange-600">En progreso:</span>
+              <span class="font-semibold ml-1 text-orange-700">{{ tareasEnProgreso }}</span>
+            </div>
+          </div>
+          <button
+            @click="abrirModalTareaRapida"
+            class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition shadow-sm flex items-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Nueva Tarea
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Columnas Kanban -->
+    <div class="flex gap-5 overflow-x-auto pb-6 min-h-[70vh] kanban-container">
+      <div
+        v-for="column in columnas"
+        :key="column.id"
+        class="kanban-column flex-shrink-0 w-96 bg-gray-50 rounded-xl shadow-sm border border-gray-200 flex flex-col"
+      >
+        <!-- Header de columna -->
+        <div class="p-4 border-b border-gray-200 bg-white rounded-t-xl">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <div :class="column.color" class="w-2.5 h-2.5 rounded-full"></div>
+              <h3 class="font-semibold text-gray-800">{{ column.titulo }}</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="bg-gray-100 px-2 py-0.5 rounded-full text-xs text-gray-600 font-medium">
+                {{ column.tareas.length }}
+              </span>
+              <button
+                v-if="column.permiteAgregar"
+                @click="abrirModalTareaRapida"
+                class="text-gray-400 hover:text-blue-600 transition"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Contenido de columna -->
+        <div class="p-3 flex-1 min-h-[400px]">
+          <draggable
+            :list="column.tareas"
+            group="tarjetas"
+            item-key="_id"
+            class="space-y-3"
+            ghost-class="dragging-ghost"
+            drag-class="dragging"
+            @end="(evt) => onDragEnd(evt, column.id)"
+          >
+            <template #item="{ element }">
+              <TarjetaCardProfesional
+                :tarjeta="element"
+                @click="openTarjetaModal(element)"
+              />
+            </template>
+          </draggable>
+          
+          <!-- Placeholder cuando está vacío -->
+          <div v-if="column.tareas.length === 0" class="text-center py-12">
+            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <span class="text-2xl">{{ column.iconoVacio }}</span>
+            </div>
+            <p class="text-xs text-gray-400">Arrastra tareas aquí</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modales -->
+    <TarjetaModalProfesional
+      v-if="selectedTarjeta"
+      :tarjeta="selectedTarjeta"
+      @close="selectedTarjeta = null"
+      @update="fetchTarjetas"
+    />
+    
+    <SolicitudModal
+      v-if="modalTareaRapida"
+      :extra="false"
+      @close="modalTareaRapida = false"
+      @created="handleTareaCreada"
+    />
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch } from 'vue';
+import { useTarjetasStore } from '~/stores/tarjetas';
+import draggable from 'vuedraggable';
+import TarjetaCardProfesional from './TarjetaCardProfesional.vue';
+import TarjetaModalProfesional from './TarjetaModalProfesional.vue';
+
+const tarjetasStore = useTarjetasStore();
+
+const columnas = ref([
+  { 
+    id: 'pendiente', 
+    titulo: '📋 Pendientes', 
+    color: 'bg-gray-400',
+    iconoVacio: '📋',
+    permiteAgregar: true,
+    tareas: []
+  },
+  { 
+    id: 'en_progreso', 
+    titulo: '⚙️ En Progreso', 
+    color: 'bg-blue-500',
+    iconoVacio: '⚙️',
+    permiteAgregar: false,
+    tareas: []
+  },
+  { 
+    id: 'revision_jefe', 
+    titulo: '👔 Revisión Jefe', 
+    color: 'bg-orange-500',
+    iconoVacio: '👔',
+    permiteAgregar: false,
+    tareas: []
+  },
+  { 
+    id: 'revision_cliente', 
+    titulo: '⭐ Revisión Cliente', 
+    color: 'bg-yellow-500',
+    iconoVacio: '⭐',
+    permiteAgregar: false,
+    tareas: []
+  },
+  { 
+    id: 'finalizada', 
+    titulo: '✅ Finalizadas', 
+    color: 'bg-green-500',
+    iconoVacio: '✅',
+    permiteAgregar: false,
+    tareas: []
+  }
+]);
+
+const totalTareas = computed(() => tarjetasStore.tarjetas.length);
+const tareasCompletadas = computed(() => tarjetasStore.tarjetas.filter(t => t.estado === 'finalizada').length);
+const tareasEnProgreso = computed(() => tarjetasStore.tarjetas.filter(t => t.estado === 'en_progreso').length);
+
+const selectedTarjeta = ref(null);
+const modalTareaRapida = ref(false);
+
+const organizarTareas = () => {
+  const mapa = {
+    pendiente: [],
+    en_progreso: [],
+    revision_jefe: [],
+    revision_cliente: [],
+    finalizada: []
+  };
+  
+  tarjetasStore.tarjetas.forEach(tarjeta => {
+    const estado = tarjeta.estado === 'completada' ? 'finalizada' : tarjeta.estado;
+    if (mapa[estado]) {
+      mapa[estado].push(tarjeta);
+    }
+  });
+  
+  columnas.value.forEach(col => {
+    col.tareas = mapa[col.id] || [];
+  });
+};
+
+const onDragEnd = async (event, nuevoEstado) => {
+  const tarjetaId = event.item.__draggable_context.element._id;
+  const tarjeta = tarjetasStore.tarjetas.find(t => t._id === tarjetaId);
+  
+  if (!tarjeta || tarjeta.estado === nuevoEstado) return;
+  
+  const transicionesValidas = {
+    pendiente: ['en_progreso'],
+    en_progreso: ['revision_jefe'],
+    revision_jefe: ['finalizada'],
+    revision_cliente: ['finalizada']
+  };
+  
+  if (!transicionesValidas[tarjeta.estado]?.includes(nuevoEstado)) {
+    alert(`⚠️ No se puede mover de "${tarjeta.estado}" a "${nuevoEstado}"`);
+    organizarTareas();
+    return;
+  }
+  
+  if (nuevoEstado === 'revision_jefe' && tarjeta.porcentajeCompletado < 100) {
+    alert('⚠️ La tarea debe estar 100% completada para enviar a revisión');
+    organizarTareas();
+    return;
+  }
+  
+  await tarjetasStore.registrarProgreso(tarjetaId, {
+    porcentajeAvance: tarjeta.porcentajeCompletado || 0,
+    horasTrabajadas: 0,
+    comentario: `Movido de ${tarjeta.estado} a ${nuevoEstado}`
+  });
+};
+
+const openTarjetaModal = (tarjeta) => {
+  selectedTarjeta.value = tarjeta;
+};
+
+const abrirModalTareaRapida = () => {
+  modalTareaRapida.value = true;
+};
+
+const handleTareaCreada = () => {
+  modalTareaRapida.value = false;
+  fetchTarjetas();
+};
+
+const fetchTarjetas = async () => {
+  await tarjetasStore.fetchTarjetas();
+  organizarTareas();
+};
+
+organizarTareas();
+watch(() => tarjetasStore.tarjetas, () => {
+  organizarTareas();
+}, { deep: true });
+
+defineExpose({ fetchTarjetas });
+</script>
+
+<style scoped>
+.kanban-container {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.kanban-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.kanban-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.kanban-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.kanban-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.kanban-column {
+  transition: all 0.2s ease;
+}
+
+.kanban-column:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08);
+}
+
+.dragging-ghost {
+  opacity: 0.5;
+  background: #e5e7eb;
+  border: 2px dashed #9ca3af;
+  transform: rotate(2deg);
+}
+
+.dragging {
+  cursor: grabbing;
+}
+</style> 
+================================= 
 components\ModalTiempoEstimado.vue 
 ================================= 
  
@@ -1498,6 +2141,506 @@ const handleSubmit = async () => {
 };
 </script> 
 ================================= 
+components\ReportesAvanzados.vue 
+================================= 
+ 
+<template>
+  <div class="reportes-avanzados">
+    <!-- Header con filtros -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+            <span class="text-white text-lg">📊</span>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-gray-800">Reportes y Estadísticas</h1>
+            <p class="text-sm text-gray-500">Análisis detallado de rendimiento</p>
+          </div>
+        </div>
+        
+        <div class="flex gap-2">
+          <button
+            v-for="periodo in periodos"
+            :key="periodo.valor"
+            @click="periodoSeleccionado = periodo.valor"
+            :class="[
+              'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              periodoSeleccionado === periodo.valor
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ]"
+          >
+            {{ periodo.label }}
+          </button>
+        </div>
+      </div>
+      
+      <div class="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-100">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-600">Desde:</span>
+            <input
+              v-model="fechaInicio"
+              type="date"
+              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-600">Hasta:</span>
+            <input
+              v-model="fechaFin"
+              type="date"
+              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <button
+            @click="aplicarFechasPersonalizadas"
+            class="px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition"
+          >
+            Aplicar
+          </button>
+        </div>
+        
+        <div class="flex gap-2">
+          <button
+            @click="exportarExcel"
+            class="px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-2"
+          >
+            📊 Excel
+          </button>
+          <button
+            @click="exportarPDF"
+            class="px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition flex items-center gap-2"
+          >
+            📄 PDF
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tarjetas de resumen -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg transform transition hover:scale-105">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-blue-100 text-sm">Tareas Completadas</p>
+            <p class="text-3xl font-bold mt-1">{{ resumen.tareasCompletadas }}</p>
+          </div>
+          <div class="text-3xl">✅</div>
+        </div>
+        <p class="text-blue-100 text-xs mt-2">vs {{ resumen.tareasCompletadasAnterior }} período anterior</p>
+      </div>
+      
+      <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg transform transition hover:scale-105">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-green-100 text-sm">Horas Trabajadas</p>
+            <p class="text-3xl font-bold mt-1">{{ resumen.totalHoras }}</p>
+          </div>
+          <div class="text-3xl">⏱️</div>
+        </div>
+        <p class="text-green-100 text-xs mt-2">Promedio: {{ resumen.promedioHorasPorDia }}/día</p>
+      </div>
+      
+      <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg transform transition hover:scale-105">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-purple-100 text-sm">Eficiencia</p>
+            <p class="text-3xl font-bold mt-1">{{ resumen.eficiencia }}%</p>
+          </div>
+          <div class="text-3xl">📈</div>
+        </div>
+        <p class="text-purple-100 text-xs mt-2">{{ resumen.eficiencia >= 80 ? 'Excelente' : resumen.eficiencia >= 60 ? 'Bueno' : 'Requiere mejora' }}</p>
+      </div>
+      
+      <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl p-4 text-white shadow-lg transform transition hover:scale-105">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-yellow-100 text-sm">Satisfacción</p>
+            <p class="text-3xl font-bold mt-1">{{ resumen.calificacionPromedio }}</p>
+          </div>
+          <div class="text-3xl">⭐</div>
+        </div>
+        <p class="text-yellow-100 text-xs mt-2">Basado en {{ resumen.totalCalificaciones }} calificaciones</p>
+      </div>
+    </div>
+    
+    <!-- Gráficos principales -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+          📈 Tareas por día
+        </h3>
+        <canvas ref="tareasPorDiaChart"></canvas>
+      </div>
+      
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+          ⏱️ Horas trabajadas por día
+        </h3>
+        <canvas ref="horasPorDiaChart"></canvas>
+      </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span class="w-2 h-2 bg-orange-500 rounded-full"></span>
+          👥 Productividad por empleado
+        </h3>
+        <canvas ref="productividadChart"></canvas>
+      </div>
+      
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span class="w-2 h-2 bg-purple-500 rounded-full"></span>
+          📊 Distribución por tipo
+        </h3>
+        <canvas ref="distribucionChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- Tabla de datos detallados -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+          📋 Detalle de tareas
+          <span class="text-xs text-gray-500 font-normal">({{ tareasFiltradas.length }} registros)</span>
+        </h3>
+      </div>
+      <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 sticky top-0">
+            <tr>
+              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Título</th>
+              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Empleado</th>
+              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Estado</th>
+              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Horas</th>
+              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Calificación</th>
+              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="tarea in tareasFiltradas" :key="tarea._id" class="border-t border-gray-100 hover:bg-gray-50 transition">
+              <td class="px-4 py-3 text-gray-800">{{ tarea.titulo }}</td>
+              <td class="px-4 py-3 text-gray-600">{{ tarea.asignadoA?.nombre || 'N/A' }}</td>
+              <td class="px-4 py-3">
+                <span :class="estadoColorClass(tarea.estado)" class="px-2 py-1 rounded-full text-xs font-medium">
+                  {{ estadoTextoLabel(tarea.estado) }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-gray-600 font-mono">{{ formatHoras(tarea) }}</td>
+              <td class="px-4 py-3">
+                <span v-if="tarea.calificacion?.puntaje" class="flex items-center gap-1">
+                  <span class="text-yellow-500">★</span>
+                  <span class="font-medium">{{ tarea.calificacion.puntaje }}/5</span>
+                </span>
+                <span v-else class="text-gray-400">—</span>
+              </td>
+              <td class="px-4 py-3 text-gray-500 text-xs">{{ formatFecha(tarea.createdAt) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue';
+import { useTarjetasStore } from '~/stores/tarjetas';
+import { Chart, registerables } from 'chart.js';
+Chart.register(...registerables);
+
+const tarjetasStore = useTarjetasStore();
+
+const periodos = [
+  { valor: 'dia', label: '📅 Hoy' },
+  { valor: 'semana', label: '📆 Esta semana' },
+  { valor: 'mes', label: '📅 Este mes' },
+  { valor: 'trimestre', label: '📊 Este trimestre' },
+  { valor: 'anio', label: '🎯 Este año' }
+];
+
+const periodoSeleccionado = ref('semana');
+const fechaInicio = ref('');
+const fechaFin = ref('');
+const tareasFiltradas = ref([]);
+const cargando = ref(false);
+
+const resumen = ref({
+  tareasCompletadas: 0,
+  tareasCompletadasAnterior: 0,
+  totalHoras: '0',
+  promedioHorasPorDia: '0',
+  eficiencia: 0,
+  calificacionPromedio: '0',
+  totalCalificaciones: 0
+});
+
+const tareasPorDiaChart = ref(null);
+const horasPorDiaChart = ref(null);
+const productividadChart = ref(null);
+const distribucionChart = ref(null);
+
+let charts = {};
+
+const formatFecha = (fecha) => {
+  return new Date(fecha).toLocaleDateString('es-ES');
+};
+
+const formatHoras = (tarea) => {
+  const total = (tarea.horasTotalesReales || 0) + ((tarea.minutosTotalesReales || 0) / 60);
+  return total.toFixed(1) + 'h';
+};
+
+const estadoColorClass = (estado) => {
+  const map = {
+    pendiente: 'bg-gray-100 text-gray-700',
+    en_progreso: 'bg-blue-100 text-blue-700',
+    revision_jefe: 'bg-orange-100 text-orange-700',
+    revision_cliente: 'bg-yellow-100 text-yellow-700',
+    finalizada: 'bg-green-100 text-green-700'
+  };
+  return map[estado] || 'bg-gray-100 text-gray-700';
+};
+
+const estadoTextoLabel = (estado) => {
+  const map = {
+    pendiente: 'Pendiente',
+    en_progreso: 'En Progreso',
+    revision_jefe: 'Revisión',
+    revision_cliente: 'Cliente',
+    finalizada: 'Finalizada'
+  };
+  return map[estado] || estado;
+};
+
+const calcularRangoFechas = () => {
+  const ahora = new Date();
+  let inicio = new Date();
+  let fin = new Date();
+  
+  switch (periodoSeleccionado.value) {
+    case 'dia':
+      inicio.setHours(0, 0, 0, 0);
+      fin.setHours(23, 59, 59, 999);
+      break;
+    case 'semana':
+      inicio.setDate(ahora.getDate() - ahora.getDay());
+      inicio.setHours(0, 0, 0, 0);
+      fin = new Date(inicio);
+      fin.setDate(inicio.getDate() + 6);
+      fin.setHours(23, 59, 59, 999);
+      break;
+    case 'mes':
+      inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+      fin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
+      fin.setHours(23, 59, 59, 999);
+      break;
+    case 'trimestre':
+      const trimestre = Math.floor(ahora.getMonth() / 3);
+      inicio = new Date(ahora.getFullYear(), trimestre * 3, 1);
+      fin = new Date(ahora.getFullYear(), (trimestre + 1) * 3, 0);
+      fin.setHours(23, 59, 59, 999);
+      break;
+    case 'anio':
+      inicio = new Date(ahora.getFullYear(), 0, 1);
+      fin = new Date(ahora.getFullYear(), 11, 31);
+      fin.setHours(23, 59, 59, 999);
+      break;
+  }
+  
+  fechaInicio.value = inicio.toISOString().split('T')[0];
+  fechaFin.value = fin.toISOString().split('T')[0];
+  
+  return { inicio, fin };
+};
+
+const aplicarFechasPersonalizadas = () => {
+  periodoSeleccionado.value = 'personalizado';
+  filtrarTareas();
+};
+
+const filtrarTareas = () => {
+  if (!tarjetasStore.tarjetas.length) return;
+  
+  const inicio = new Date(fechaInicio.value);
+  const fin = new Date(fechaFin.value);
+  fin.setHours(23, 59, 59, 999);
+  
+  tareasFiltradas.value = tarjetasStore.tarjetas.filter(tarea => {
+    const fecha = new Date(tarea.createdAt);
+    return fecha >= inicio && fecha <= fin;
+  });
+  
+  calcularResumen();
+  renderizarGraficos();
+};
+
+const calcularResumen = () => {
+  const completadas = tareasFiltradas.value.filter(t => t.estado === 'finalizada');
+  const totalHorasNum = tareasFiltradas.value.reduce((sum, t) => {
+    return sum + (t.horasTotalesReales || 0) + ((t.minutosTotalesReales || 0) / 60);
+  }, 0);
+  
+  const calificadas = completadas.filter(t => t.calificacion?.puntaje);
+  const calificacionPromedioNum = calificadas.length > 0
+    ? (calificadas.reduce((sum, t) => sum + t.calificacion.puntaje, 0) / calificadas.length)
+    : 0;
+  
+  const diasEnRango = Math.max(1, Math.ceil((new Date(fechaFin.value) - new Date(fechaInicio.value)) / (1000 * 60 * 60 * 24)));
+  
+  resumen.value = {
+    tareasCompletadas: completadas.length,
+    tareasCompletadasAnterior: Math.max(0, Math.round(completadas.length * 0.9)),
+    totalHoras: totalHorasNum.toFixed(1),
+    promedioHorasPorDia: (totalHorasNum / diasEnRango).toFixed(1),
+    eficiencia: tareasFiltradas.value.length > 0 ? Math.round((completadas.length / tareasFiltradas.value.length) * 100) : 0,
+    calificacionPromedio: calificacionPromedioNum.toFixed(1),
+    totalCalificaciones: calificadas.length
+  };
+};
+
+const renderizarGraficos = () => {
+  const tareasPorFecha = {};
+  const horasPorFecha = {};
+  
+  tareasFiltradas.value.forEach(tarea => {
+    const fecha = new Date(tarea.createdAt).toLocaleDateString('es-ES');
+    tareasPorFecha[fecha] = (tareasPorFecha[fecha] || 0) + 1;
+    horasPorFecha[fecha] = (horasPorFecha[fecha] || 0) + (tarea.horasTotalesReales || 0) + ((tarea.minutosTotalesReales || 0) / 60);
+  });
+  
+  const fechas = Object.keys(tareasPorFecha).sort();
+  
+  // Destruir gráficos existentes
+  Object.values(charts).forEach(chart => {
+    if (chart) chart.destroy();
+  });
+  
+  if (tareasPorDiaChart.value) {
+    charts.tareasPorDia = new Chart(tareasPorDiaChart.value.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: fechas,
+        datasets: [{
+          label: 'Tareas creadas',
+          data: fechas.map(f => tareasPorFecha[f]),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: true }
+    });
+  }
+  
+  if (horasPorDiaChart.value) {
+    charts.horasPorDia = new Chart(horasPorDiaChart.value.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: fechas,
+        datasets: [{
+          label: 'Horas trabajadas',
+          data: fechas.map(f => horasPorFecha[f]),
+          backgroundColor: '#10b981',
+          borderRadius: 8
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: true }
+    });
+  }
+  
+  const empleados = {};
+  tareasFiltradas.value.forEach(tarea => {
+    if (tarea.asignadoA?.nombre) {
+      if (!empleados[tarea.asignadoA.nombre]) {
+        empleados[tarea.asignadoA.nombre] = { completadas: 0, horas: 0 };
+      }
+      if (tarea.estado === 'finalizada') empleados[tarea.asignadoA.nombre].completadas++;
+      empleados[tarea.asignadoA.nombre].horas += (tarea.horasTotalesReales || 0) + ((tarea.minutosTotalesReales || 0) / 60);
+    }
+  });
+  
+  if (productividadChart.value && Object.keys(empleados).length) {
+    charts.productividad = new Chart(productividadChart.value.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: Object.keys(empleados),
+        datasets: [
+          { label: 'Tareas completadas', data: Object.values(empleados).map(e => e.completadas), backgroundColor: '#3b82f6', borderRadius: 8 },
+          { label: 'Horas trabajadas', data: Object.values(empleados).map(e => e.horas), backgroundColor: '#f59e0b', borderRadius: 8 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: true }
+    });
+  }
+  
+  const tipos = { solicitud_cliente: 0, tarea_extra: 0, asignacion_jefe: 0 };
+  tareasFiltradas.value.forEach(tarea => {
+    tipos[tarea.tipo] = (tipos[tarea.tipo] || 0) + 1;
+  });
+  
+  if (distribucionChart.value) {
+    charts.distribucion = new Chart(distribucionChart.value.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Clientes', 'Tareas Extra', 'Asignaciones'],
+        datasets: [{ data: [tipos.solicitud_cliente, tipos.tarea_extra, tipos.asignacion_jefe], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: true }
+    });
+  }
+};
+
+const exportarExcel = () => {
+  alert('📊 Exportando a Excel... (Próximamente)');
+};
+
+const exportarPDF = () => {
+  alert('📄 Exportando a PDF... (Próximamente)');
+};
+
+watch(periodoSeleccionado, () => {
+  calcularRangoFechas();
+  filtrarTareas();
+});
+
+watch(() => tarjetasStore.tarjetas, () => {
+  if (tarjetasStore.tarjetas.length) {
+    filtrarTareas();
+  }
+}, { deep: true });
+
+onMounted(() => {
+  calcularRangoFechas();
+  if (tarjetasStore.tarjetas.length) {
+    filtrarTareas();
+  }
+});
+</script>
+
+<style scoped>
+.reportes-avanzados {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hover\:scale-105:hover {
+  transform: scale(1.05);
+  transition: transform 0.2s ease;
+}
+</style> 
+================================= 
 components\SolicitudModal.vue 
 ================================= 
  
@@ -1750,15 +2893,15 @@ components\TarjetaCard.vue
     
     <div class="space-y-2">
       <div class="flex justify-between text-xs text-gray-500">
-        <span>Progreso: {{ tarjeta.porcentajeCompletado }}%</span>
-        <span>⏱️ {{ tiempoRealFormateado }} / {{ tiempoEstimadoFormateado }}</span>
+        <span>Progreso: {{ progresoMostrado }}%</span>
+        <span>⏱️ {{ tiempoRealMostrado }} / {{ tiempoEstimadoFormateado }}</span>
       </div>
       
       <div class="w-full bg-gray-200 rounded-full h-2">
         <div
-          class="rounded-full h-2 transition-all"
+          class="rounded-full h-2 transition-all duration-500"
           :class="progresoColorBarra"
-          :style="{ width: `${tarjeta.porcentajeCompletado}%` }"
+          :style="{ width: `${progresoMostrado}%` }"
         ></div>
       </div>
       
@@ -1803,12 +2946,17 @@ components\TarjetaCard.vue
 </template>
 
 <script setup>
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+
 const props = defineProps({
   tarjeta: {
     type: Object,
     required: true
   }
 });
+
+const forceUpdate = ref(0);
+let intervaloActualizacion = null;
 
 const prioridadMap = {
   baja: { texto: 'Baja', color: 'bg-gray-100 text-gray-700', border: 'border-gray-300' },
@@ -1849,15 +2997,83 @@ const tiempoEstimadoFormateado = computed(() => {
   return `${horas}h ${minutos}min`;
 });
 
-const tiempoRealFormateado = computed(() => {
-  const totalMinutos = (props.tarjeta.horasTotalesReales * 60) + (props.tarjeta.minutosTotalesReales || 0);
-  const horas = Math.floor(totalMinutos / 60);
-  const minutos = totalMinutos % 60;
+const calcularTiempoTotalTrabajado = () => {
+  let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
   
-  if (totalMinutos === 0) return '0 min';
-  if (horas === 0) return `${minutos} min`;
-  if (minutos === 0) return `${horas} ${horas === 1 ? 'h' : 'h'}`;
-  return `${horas}h ${minutos}min`;
+  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+    const ahora = new Date();
+    const inicio = new Date(props.tarjeta.fechaUltimaReanudacion);
+    const minutosDesdeReanudacion = Math.floor((ahora - inicio) / 1000 / 60);
+    tiempoTotal += minutosDesdeReanudacion;
+  }
+  
+  return tiempoTotal;
+};
+
+const formatoTiempo = (minutos) => {
+  if (!minutos && minutos !== 0) return '0 min';
+  if (minutos === 0) return '0 min';
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+  if (horas === 0) return `${mins} min`;
+  if (mins === 0) return `${horas} ${horas === 1 ? 'h' : 'h'}`;
+  return `${horas}h ${mins}min`;
+};
+
+const tiempoRealMostrado = computed(() => {
+  const tiempoTotal = calcularTiempoTotalTrabajado();
+  return formatoTiempo(tiempoTotal);
+});
+
+const progresoMostrado = computed(() => {
+  const tiempoEstimado = props.tarjeta.tiempoEstimadoEmpleado || 0;
+  
+  if (tiempoEstimado > 0) {
+    const tiempoTotal = calcularTiempoTotalTrabajado();
+    const progresoPorTiempo = Math.min(100, Math.floor((tiempoTotal / tiempoEstimado) * 100));
+    return Math.max(props.tarjeta.porcentajeCompletado || 0, progresoPorTiempo);
+  }
+  
+  return props.tarjeta.porcentajeCompletado || 0;
+});
+
+const iniciarIntervalo = () => {
+  if (intervaloActualizacion) clearInterval(intervaloActualizacion);
+  
+  if (props.tarjeta.estadoProgreso === 'activa') {
+    intervaloActualizacion = setInterval(() => {
+      forceUpdate.value++;
+    }, 1000);
+  }
+};
+
+const detenerIntervalo = () => {
+  if (intervaloActualizacion) {
+    clearInterval(intervaloActualizacion);
+    intervaloActualizacion = null;
+  }
+};
+
+watch(() => props.tarjeta.estadoProgreso, (nuevoEstado) => {
+  if (nuevoEstado === 'activa') {
+    iniciarIntervalo();
+  } else {
+    detenerIntervalo();
+  }
+}, { immediate: true });
+
+watch(() => props.tarjeta, () => {
+  forceUpdate.value++;
+}, { deep: true });
+
+onMounted(() => {
+  if (props.tarjeta.estadoProgreso === 'activa') {
+    iniciarIntervalo();
+  }
+});
+
+onUnmounted(() => {
+  detenerIntervalo();
 });
 </script>
 
@@ -1869,6 +3085,182 @@ const tiempoRealFormateado = computed(() => {
 .animate-pulse {
   animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style> 
+================================= 
+components\TarjetaCardProfesional.vue 
+================================= 
+ 
+<template>
+  <div
+    class="tarjeta-profesional bg-white rounded-lg p-4 shadow-sm border border-gray-200 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-gray-300"
+    :class="{ 'border-l-4': true, 'border-l-green-500': tarjeta.estadoProgreso === 'activa', 'border-l-yellow-500': tarjeta.estadoProgreso === 'pausada' }"
+    @click="$emit('click')"
+  >
+    <!-- Header -->
+    <div class="flex justify-between items-start mb-2">
+      <div class="flex-1">
+        <h4 class="font-semibold text-gray-900 line-clamp-1">{{ tarjeta.titulo }}</h4>
+        <p class="text-xs text-gray-400 mt-0.5 font-mono">#{{ tarjeta._id?.slice(-6) }}</p>
+      </div>
+      <div class="flex gap-1 ml-2">
+        <span :class="prioridadClass" class="px-2 py-0.5 rounded-full text-xs font-medium">
+          {{ prioridadTexto }}
+        </span>
+      </div>
+    </div>
+    
+    <!-- Descripción -->
+    <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ tarjeta.descripcion || 'Sin descripción' }}</p>
+    
+    <!-- Progreso -->
+    <div class="space-y-2">
+      <div class="flex justify-between text-xs">
+        <span class="text-gray-500">Progreso</span>
+        <span class="font-medium" :class="progresoColor">{{ progresoMostrado }}%</span>
+      </div>
+      <div class="w-full bg-gray-100 rounded-full h-1.5">
+        <div
+          class="rounded-full h-1.5 transition-all duration-500"
+          :class="progresoBarraColor"
+          :style="{ width: `${progresoMostrado}%` }"
+        ></div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
+      <div class="flex items-center gap-1.5">
+        <div class="w-5 h-5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+          <span class="text-[10px] font-medium text-white">{{ inicialesAsignado }}</span>
+        </div>
+        <span class="text-xs text-gray-600">{{ nombreAsignado }}</span>
+      </div>
+      
+      <div class="flex items-center gap-1 text-xs text-gray-400">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>{{ tiempoMostrado }}</span>
+      </div>
+    </div>
+    
+    <!-- Badge de estado activo -->
+    <div v-if="tarjeta.estadoProgreso === 'activa'" class="absolute -top-2 -right-2">
+      <span class="relative flex h-3 w-3">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+      </span>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+
+const props = defineProps({
+  tarjeta: {
+    type: Object,
+    required: true
+  }
+});
+
+defineEmits(['click']);
+
+const prioridadMap = {
+  baja: { texto: 'Baja', class: 'bg-gray-100 text-gray-600' },
+  media: { texto: 'Media', class: 'bg-blue-100 text-blue-700' },
+  alta: { texto: 'Alta', class: 'bg-orange-100 text-orange-700' },
+  urgente: { texto: 'Urgente', class: 'bg-red-100 text-red-700' }
+};
+
+const prioridadTexto = computed(() => prioridadMap[props.tarjeta.prioridad]?.texto || 'Media');
+const prioridadClass = computed(() => prioridadMap[props.tarjeta.prioridad]?.class || prioridadMap.media.class);
+
+const progresoColor = computed(() => {
+  if (props.tarjeta.porcentajeCompletado >= 80) return 'text-green-600';
+  if (props.tarjeta.porcentajeCompletado >= 50) return 'text-blue-600';
+  return 'text-gray-600';
+});
+
+const progresoBarraColor = computed(() => {
+  if (props.tarjeta.porcentajeCompletado >= 80) return 'bg-green-500';
+  if (props.tarjeta.porcentajeCompletado >= 50) return 'bg-blue-500';
+  return 'bg-gray-500';
+});
+
+const nombreAsignado = computed(() => {
+  return props.tarjeta.asignadoA?.nombre?.split(' ')[0] || 'Sin asignar';
+});
+
+const inicialesAsignado = computed(() => {
+  const nombre = props.tarjeta.asignadoA?.nombre || '';
+  return nombre.charAt(0).toUpperCase() || '?';
+});
+
+const tiempoMostrado = computed(() => {
+  let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
+  
+  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+    tiempoTotal += Math.floor((new Date() - new Date(props.tarjeta.fechaUltimaReanudacion)) / 1000 / 60);
+  }
+  
+  const minutosRestantes = (props.tarjeta.tiempoEstimadoEmpleado || 0) - tiempoTotal;
+  
+  if (minutosRestantes <= 0) return '✅ Listo';
+  const horas = Math.floor(minutosRestantes / 60);
+  const mins = minutosRestantes % 60;
+  if (horas === 0) return `${mins}min`;
+  return `${horas}h ${mins}min`;
+});
+
+const progresoMostrado = computed(() => {
+  const tiempoEstimado = props.tarjeta.tiempoEstimadoEmpleado || 0;
+  if (tiempoEstimado > 0) {
+    let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
+    if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+      tiempoTotal += Math.floor((new Date() - new Date(props.tarjeta.fechaUltimaReanudacion)) / 1000 / 60);
+    }
+    const progreso = Math.min(100, Math.floor((tiempoTotal / tiempoEstimado) * 100));
+    return Math.max(props.tarjeta.porcentajeCompletado || 0, progreso);
+  }
+  return props.tarjeta.porcentajeCompletado || 0;
+});
+</script>
+
+<style scoped>
+.tarjeta-profesional {
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tarjeta-profesional:hover {
+  transform: translateY(-2px);
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -2515,6 +3907,350 @@ onUnmounted(() => {
 }
 </style> 
 ================================= 
+components\TarjetaModalProfesional.vue 
+================================= 
+ 
+<template>
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto" @click.self="$emit('close')">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-slideUp">
+      <!-- Header -->
+      <div class="flex justify-between items-center p-5 border-b border-gray-200 sticky top-0 bg-white rounded-t-xl">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+            <span class="text-white text-lg">📋</span>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-800">{{ tarjeta.titulo }}</h3>
+            <p class="text-xs text-gray-400">ID: #{{ tarjeta._id?.slice(-8) }}</p>
+          </div>
+        </div>
+        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 transition w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+          ✕
+        </button>
+      </div>
+      
+      <div class="p-5 space-y-5">
+        <!-- Badges y estado -->
+        <div class="flex flex-wrap gap-2 items-center">
+          <span class="px-3 py-1 rounded-full text-sm font-medium" :class="prioridadColor">
+            {{ prioridadTexto }}
+          </span>
+          <span class="px-3 py-1 rounded-full text-sm font-medium" :class="estadoColor">
+            {{ estadoTexto }}
+          </span>
+          <span v-if="tarjeta.estado === 'en_progreso'" 
+                class="px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2"
+                :class="tarjeta.estadoProgreso === 'activa' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'">
+            <span v-if="tarjeta.estadoProgreso === 'activa'" class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            <span v-else>⏸️</span>
+            {{ tarjeta.estadoProgreso === 'activa' ? 'En ejecución' : 'Pausada' }}
+          </span>
+        </div>
+        
+        <!-- Descripción -->
+        <div class="bg-gray-50 rounded-lg p-4">
+          <h4 class="font-semibold text-gray-700 mb-2 text-sm">📝 Descripción</h4>
+          <p class="text-gray-600">{{ tarjeta.descripcion || 'Sin descripción' }}</p>
+        </div>
+        
+        <!-- Información adicional -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-blue-50 rounded-lg p-3">
+            <p class="text-xs text-blue-600 font-medium">👤 Asignado a</p>
+            <p class="text-sm font-semibold text-gray-800">{{ tarjeta.asignadoA?.nombre || 'Sin asignar' }}</p>
+          </div>
+          <div class="bg-purple-50 rounded-lg p-3">
+            <p class="text-xs text-purple-600 font-medium">📅 Creada</p>
+            <p class="text-sm font-semibold text-gray-800">{{ formatDate(tarjeta.createdAt) }}</p>
+          </div>
+        </div>
+        
+        <!-- Progreso -->
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <h4 class="font-semibold text-gray-700">📊 Progreso</h4>
+            <span class="text-2xl font-bold" :class="progresoColor">{{ tarjeta.porcentajeCompletado }}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div class="rounded-full h-3 transition-all duration-500" :class="progresoBarraColor" :style="{ width: `${tarjeta.porcentajeCompletado}%` }"></div>
+          </div>
+        </div>
+        
+        <!-- Tiempo -->
+        <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4">
+          <h4 class="font-semibold text-gray-700 mb-3">⏱️ Tiempo</h4>
+          <div class="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p class="text-xs text-gray-500">Estimado</p>
+              <p class="text-lg font-bold text-blue-600">{{ formatTiempo(tarjeta.tiempoEstimadoEmpleado) }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500">Trabajado</p>
+              <p class="text-lg font-bold text-green-600">{{ formatTiempoTrabajado() }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500">Restante</p>
+              <p class="text-lg font-bold" :class="tiempoRestanteClass">{{ formatTiempoRestante() }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Botones de acción -->
+        <div class="flex gap-3 pt-3">
+          <button 
+            v-if="puedeAutoAsignar" 
+            @click="autoAsignar" 
+            class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 rounded-lg hover:from-green-600 hover:to-green-700 transition font-medium"
+          >
+            🎯 Auto-asignarme
+          </button>
+          
+          <button 
+            v-if="puedeIniciar" 
+            @click="abrirModalIniciar" 
+            class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-blue-700 transition font-medium"
+          >
+            🚀 Iniciar tarea
+          </button>
+          
+          <button 
+            v-if="puedeReanudar" 
+            @click="reanudarTarea" 
+            class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 rounded-lg hover:from-green-600 hover:to-green-700 transition font-medium"
+          >
+            ▶️ Reanudar
+          </button>
+          
+          <button 
+            v-if="puedePausar" 
+            @click="pausarTarea" 
+            class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2.5 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition font-medium"
+          >
+            ⏸️ Pausar
+          </button>
+          
+          <button 
+            v-if="puedeAprobar" 
+            @click="aprobarTarea" 
+            class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 rounded-lg hover:from-green-600 hover:to-green-700 transition font-medium"
+          >
+            ✅ Aprobar tarea
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <ModalTiempoEstimado
+      v-if="modalIniciar"
+      :tarjeta="tarjeta"
+      @tiempo-establecido="handleTiempoEstablecido"
+    />
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+import { useAuthStore } from '~/stores/auth';
+import { useTarjetasStore } from '~/stores/tarjetas';
+import ModalTiempoEstimado from './ModalTiempoEstimado.vue';
+
+const props = defineProps({
+  tarjeta: {
+    type: Object,
+    required: true
+  }
+});
+
+const emit = defineEmits(['close', 'update']);
+
+const authStore = useAuthStore();
+const tarjetasStore = useTarjetasStore();
+const config = useRuntimeConfig();
+
+const modalIniciar = ref(false);
+
+const esAsignadoAMi = computed(() => {
+  return props.tarjeta.asignadoA?._id === authStore.user?._id;
+});
+
+const puedeAutoAsignar = computed(() => {
+  return !props.tarjeta.asignadoA && 
+         (authStore.isEmpleado || authStore.isJefe) && 
+         props.tarjeta.estado === 'pendiente';
+});
+
+const puedeIniciar = computed(() => {
+  return esAsignadoAMi.value && 
+         props.tarjeta.estado === 'en_progreso' && 
+         props.tarjeta.tiempoEstimadoEmpleado === 0;
+});
+
+const puedeReanudar = computed(() => {
+  return esAsignadoAMi.value && 
+         props.tarjeta.estado === 'en_progreso' && 
+         props.tarjeta.estadoProgreso === 'pausada' &&
+         props.tarjeta.tiempoEstimadoEmpleado > 0;
+});
+
+const puedePausar = computed(() => {
+  return esAsignadoAMi.value && 
+         props.tarjeta.estado === 'en_progreso' && 
+         props.tarjeta.estadoProgreso === 'activa';
+});
+
+const puedeAprobar = computed(() => {
+  return authStore.isJefe && props.tarjeta.estado === 'revision_jefe';
+});
+
+const prioridadMap = {
+  baja: { texto: 'Baja', color: 'bg-gray-100 text-gray-700' },
+  media: { texto: 'Media', color: 'bg-blue-100 text-blue-700' },
+  alta: { texto: 'Alta', color: 'bg-orange-100 text-orange-700' },
+  urgente: { texto: 'Urgente', color: 'bg-red-100 text-red-700' }
+};
+
+const estadoMap = {
+  pendiente: { texto: '📋 Pendiente', color: 'bg-gray-100 text-gray-700' },
+  en_progreso: { texto: '⚙️ En Progreso', color: 'bg-blue-100 text-blue-700' },
+  revision_jefe: { texto: '👔 Revisión Jefe', color: 'bg-orange-100 text-orange-700' },
+  revision_cliente: { texto: '⭐ Revisión Cliente', color: 'bg-yellow-100 text-yellow-700' },
+  finalizada: { texto: '🏁 Finalizada', color: 'bg-green-100 text-green-700' }
+};
+
+const prioridadTexto = computed(() => prioridadMap[props.tarjeta.prioridad]?.texto || 'Media');
+const prioridadColor = computed(() => prioridadMap[props.tarjeta.prioridad]?.color || prioridadMap.media.color);
+const estadoTexto = computed(() => estadoMap[props.tarjeta.estado]?.texto || props.tarjeta.estado);
+const estadoColor = computed(() => estadoMap[props.tarjeta.estado]?.color || 'bg-gray-100 text-gray-700');
+
+const progresoColor = computed(() => {
+  if (props.tarjeta.porcentajeCompletado >= 80) return 'text-green-600';
+  if (props.tarjeta.porcentajeCompletado >= 50) return 'text-blue-600';
+  return 'text-gray-600';
+});
+
+const progresoBarraColor = computed(() => {
+  if (props.tarjeta.porcentajeCompletado >= 80) return 'bg-green-500';
+  if (props.tarjeta.porcentajeCompletado >= 50) return 'bg-blue-500';
+  return 'bg-gray-500';
+});
+
+const tiempoRestanteClass = computed(() => {
+  const restante = calcularTiempoRestante();
+  if (restante <= 0) return 'text-green-600';
+  if (restante < 30) return 'text-red-600 animate-pulse';
+  return 'text-orange-600';
+});
+
+const formatDate = (date) => {
+  return new Date(date).toLocaleString('es-ES');
+};
+
+const formatTiempo = (minutos) => {
+  if (!minutos || minutos === 0) return '0 min';
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+  if (horas === 0) return `${mins} min`;
+  if (mins === 0) return `${horas} ${horas === 1 ? 'h' : 'h'}`;
+  return `${horas}h ${mins}min`;
+};
+
+const calcularTiempoTrabajado = () => {
+  let tiempo = props.tarjeta.tiempoAcumulado || 0;
+  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+    tiempo += Math.floor((new Date() - new Date(props.tarjeta.fechaUltimaReanudacion)) / 1000 / 60);
+  }
+  return tiempo;
+};
+
+const calcularTiempoRestante = () => {
+  const estimado = props.tarjeta.tiempoEstimadoEmpleado || 0;
+  const trabajado = calcularTiempoTrabajado();
+  return Math.max(0, estimado - trabajado);
+};
+
+const formatTiempoTrabajado = () => {
+  return formatTiempo(calcularTiempoTrabajado());
+};
+
+const formatTiempoRestante = () => {
+  return formatTiempo(calcularTiempoRestante());
+};
+
+const autoAsignar = async () => {
+  await tarjetasStore.autoAsignar(props.tarjeta._id);
+  emit('update');
+  emit('close');
+};
+
+const abrirModalIniciar = () => {
+  modalIniciar.value = true;
+};
+
+const handleTiempoEstablecido = () => {
+  modalIniciar.value = false;
+  emit('update');
+  emit('close');
+};
+
+const pausarTarea = async () => {
+  const token = localStorage.getItem('token');
+  await $fetch(`${config.public.apiBase}/tarjetas/${props.tarjeta._id}/pausar`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  emit('update');
+  emit('close');
+};
+
+const reanudarTarea = async () => {
+  const token = localStorage.getItem('token');
+  const response = await $fetch(`${config.public.apiBase}/tarjetas/${props.tarjeta._id}/reanudar`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (response.success) {
+    emit('update');
+    emit('close');
+  }
+};
+
+const aprobarTarea = async () => {
+  const token = localStorage.getItem('token');
+  await $fetch(`${config.public.apiBase}/tarjetas/${props.tarjeta._id}/aprobar-jefe`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  emit('update');
+  emit('close');
+};
+</script>
+
+<style scoped>
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+</style> 
+================================= 
 middleware\auth.js 
 ================================= 
  
@@ -2562,7 +4298,7 @@ pages\index.vue
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-14">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
               <span class="text-white text-sm font-bold">CP</span>
             </div>
             <h1 class="text-base font-semibold text-gray-800">Control de Personal</h1>
@@ -2570,7 +4306,7 @@ pages\index.vue
           
           <div class="flex items-center gap-3">
             <div class="flex items-center gap-2">
-              <div class="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
+              <div class="w-7 h-7 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
                 <span class="text-xs font-medium text-blue-700">{{ authStore.user?.nombre?.charAt(0) }}</span>
               </div>
               <span class="text-sm text-gray-700 hidden sm:inline">{{ authStore.user?.nombre?.split(' ')[0] }}</span>
@@ -2592,7 +4328,7 @@ pages\index.vue
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
               <span class="text-white text-sm font-bold">CP</span>
             </div>
             <h1 class="text-base font-semibold text-gray-800">Control de Personal</h1>
@@ -2617,8 +4353,8 @@ pages\index.vue
             v-for="tab in tabsJefe"
             :key="tab.key"
             @click="activeTab = tab.key"
-            :class="activeTab === tab.key ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'"
-            class="px-3 py-1.5 rounded-md transition flex items-center gap-1.5 text-sm shadow-sm"
+            :class="activeTab === tab.key ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'"
+            class="px-3 py-1.5 rounded-md transition flex items-center gap-1.5 text-sm"
           >
             <span class="text-base">{{ tab.icon }}</span>
             <span>{{ tab.label }}</span>
@@ -2639,7 +4375,7 @@ pages\index.vue
         </div>
         
         <div v-if="activeTab === 'kanban'">
-          <KanbanBoard ref="kanbanBoardRef" />
+          <KanbanBoardProfesional ref="kanbanBoardRef" />
         </div>
         
         <div v-if="activeTab === 'dashboard'">
@@ -2647,27 +4383,11 @@ pages\index.vue
         </div>
         
         <div v-if="activeTab === 'reportes'">
-          <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-            <h2 class="text-lg font-bold mb-3 text-gray-800">📈 Reportes Avanzados</h2>
-            <p class="text-sm text-gray-500">Próximamente: Exportar a Excel, PDF, reportes personalizados</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-              <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                <h3 class="text-sm font-semibold text-gray-800">📊 Productividad</h3>
-                <p class="text-xl font-bold text-blue-600">{{ eficienciaGeneral }}%</p>
-                <p class="text-xs text-gray-500">Eficiencia del equipo</p>
-              </div>
-              <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                <h3 class="text-sm font-semibold text-gray-800">⏱️ Horas Extras</h3>
-                <p class="text-xl font-bold text-blue-600">{{ totalHorasExtras }}h</p>
-                <p class="text-xs text-gray-500">Últimos 30 días</p>
-              </div>
-              <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                <h3 class="text-sm font-semibold text-gray-800">⭐ Satisfacción</h3>
-                <p class="text-xl font-bold text-blue-600">{{ calificacionGeneral }}</p>
-                <p class="text-xs text-gray-500">Promedio clientes</p>
-              </div>
-            </div>
-          </div>
+          <ReportesAvanzados />
+        </div>
+        
+        <div v-if="activeTab === 'configuracion'">
+          <ConfiguracionAutoCierre />
         </div>
       </div>
       
@@ -2696,179 +4416,201 @@ pages\index.vue
         </div>
         
         <!-- Tareas disponibles para tomar -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-gray-800">📋 Tareas Disponibles</h2>
-            <button 
-              @click="tomarSiguienteTarea" 
-              :disabled="cargandoTarea || tareasDisponibles.length === 0"
-              class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition flex items-center gap-2"
-            >
-              <span>🎯</span>
-              {{ cargandoTarea ? 'Tomando...' : 'Tomar Siguiente Tarea' }}
-            </button>
-          </div>
-          
-          <div v-if="cargandoDisponibles" class="text-center py-8 text-gray-500">
-            <div class="animate-pulse">Cargando tareas disponibles...</div>
-          </div>
-          
-          <div v-else-if="tareasDisponibles.length === 0" class="text-center py-8 text-gray-500">
-            No hay tareas disponibles en este momento
-          </div>
-          
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div 
-              v-for="tarea in tareasDisponibles" 
-              :key="tarea._id"
-              class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition cursor-pointer hover:border-green-300"
-              @click="tomarTareaEspecifica(tarea._id)"
-            >
-              <div class="flex justify-between items-start mb-2">
-                <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
-                <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs">
-                  {{ prioridadTextoLabel(tarea.prioridad) }}
-                </span>
-              </div>
-              <p class="text-sm text-gray-600 mb-2 line-clamp-2">{{ tarea.descripcion || 'Sin descripción' }}</p>
-              <div class="text-xs text-gray-500">
-                <div v-if="tarea.clienteInfo">
-                  <span>👤 {{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
-                  <span v-if="tarea.clienteInfo.telefono" class="ml-2">📞 {{ tarea.clienteInfo.telefono }}</span>
-                </div>
-                <div class="mt-1">📅 Creada: {{ new Date(tarea.createdAt).toLocaleDateString() }}</div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+          <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <div class="flex justify-between items-center">
+              <div>
+                <h2 class="text-lg font-bold text-gray-800">📋 Tareas Disponibles</h2>
+                <p class="text-xs text-gray-500 mt-0.5">Selecciona una tarea para comenzar a trabajar</p>
               </div>
               <button 
-                class="mt-3 w-full bg-green-500 text-white py-1.5 rounded text-sm hover:bg-green-600 transition"
-                @click.stop="tomarTareaEspecifica(tarea._id)"
+                @click="tomarSiguienteTarea" 
+                :disabled="cargandoTarea || tareasDisponibles.length === 0"
+                class="bg-gradient-to-r from-green-500 to-green-600 text-white px-5 py-2 rounded-lg hover:from-green-600 hover:to-green-700 disabled:opacity-50 transition flex items-center gap-2 shadow-sm"
               >
-                Tomar tarea
+                <span>🎯</span>
+                {{ cargandoTarea ? 'Tomando...' : 'Tomar Siguiente Tarea' }}
               </button>
+            </div>
+          </div>
+          
+          <div class="p-5">
+            <div v-if="cargandoDisponibles" class="text-center py-8">
+              <div class="animate-pulse">
+                <div class="w-12 h-12 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                <div class="text-gray-500">Cargando tareas disponibles...</div>
+              </div>
+            </div>
+            
+            <div v-else-if="tareasDisponibles.length === 0" class="text-center py-8">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="text-2xl">📭</span>
+              </div>
+              <p class="text-gray-500">No hay tareas disponibles en este momento</p>
+            </div>
+            
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div 
+                v-for="tarea in tareasDisponibles" 
+                :key="tarea._id"
+                class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer hover:border-green-300 hover:transform hover:-translate-y-1"
+                @click="tomarTareaEspecifica(tarea._id)"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <h3 class="font-semibold text-gray-800 line-clamp-1">{{ tarea.titulo }}</h3>
+                  <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+                    {{ prioridadTextoLabel(tarea.prioridad) }}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ tarea.descripcion || 'Sin descripción' }}</p>
+                <div class="text-xs text-gray-500">
+                  <div v-if="tarea.clienteInfo" class="flex items-center gap-2 mb-1">
+                    <span>👤 {{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
+                    <span v-if="tarea.clienteInfo.telefono" class="text-gray-400">📞 {{ tarea.clienteInfo.telefono }}</span>
+                  </div>
+                  <div>📅 {{ new Date(tarea.createdAt).toLocaleDateString() }}</div>
+                </div>
+                <button 
+                  class="mt-3 w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-1.5 rounded text-sm hover:from-green-600 hover:to-green-700 transition"
+                  @click.stop="tomarTareaEspecifica(tarea._id)"
+                >
+                  Tomar tarea
+                </button>
+              </div>
             </div>
           </div>
         </div>
         
         <!-- Mis Tareas - Activa y Pausadas -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">⚙️ Mis Tareas</h2>
-          
-          <div v-if="tareasEnProgreso.length === 0 && !tareaActiva" class="text-center py-8 text-gray-500">
-            No tienes tareas asignadas actualmente
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+          <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <h2 class="text-lg font-bold text-gray-800">⚙️ Mis Tareas</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Tareas que tienes asignadas actualmente</p>
           </div>
           
-          <div v-else class="space-y-4">
-            <!-- Tarea Activa (destacada) -->
-            <div v-if="tareaActiva" class="border-2 border-green-500 bg-green-50 rounded-lg p-4 shadow-md">
-              <div class="flex justify-between items-start mb-2">
-                <div class="flex items-center gap-2">
-                  <h3 class="font-bold text-gray-800">{{ tareaActiva.titulo }}</h3>
-                  <span class="text-xs px-2 py-1 rounded-full bg-green-500 text-white flex items-center gap-1">
-                    <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                    ACTIVA
-                  </span>
-                </div>
-                <span :class="prioridadColorClass(tareaActiva.prioridad)" class="px-2 py-0.5 rounded-full text-xs">
-                  {{ prioridadTextoLabel(tareaActiva.prioridad) }}
-                </span>
+          <div class="p-5">
+            <div v-if="tareasEnProgreso.length === 0 && !tareaActiva" class="text-center py-8">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="text-2xl">📭</span>
               </div>
-              <p class="text-sm text-gray-600 mb-3">{{ tareaActiva.descripcion || 'Sin descripción' }}</p>
-              
-              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
-                <div>
-                  <span class="text-gray-500">Progreso:</span>
-                  <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div class="bg-green-500 rounded-full h-2" :style="{ width: `${tareaActiva.porcentajeCompletado}%` }"></div>
-                  </div>
-                  <span class="text-xs">{{ tareaActiva.porcentajeCompletado }}%</span>
-                </div>
-                <div>
-                  <span class="text-gray-500">Tiempo estimado:</span>
-                  <span class="font-medium ml-1">{{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}</span>
-                </div>
-              </div>
-              
-              <div class="flex gap-2">
-                <button 
-                  @click="pausarTarea(tareaActiva._id)"
-                  class="flex-1 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition text-sm"
-                >
-                  ⏸️ Pausar
-                </button>
-                <button 
-                  @click="abrirModalProgreso(tareaActiva)"
-                  class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition text-sm"
-                >
-                  📊 Registrar progreso
-                </button>
-              </div>
-              
-              <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 text-sm">
-                <div class="flex items-center gap-2 text-gray-600">
-                  <span>👤 Cliente:</span>
-                  <span class="font-medium">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
-                  <span v-if="tareaActiva.clienteInfo.telefono" class="text-gray-500">📞 {{ tareaActiva.clienteInfo.telefono }}</span>
-                </div>
-              </div>
+              <p class="text-gray-500">No tienes tareas asignadas actualmente</p>
             </div>
             
-            <!-- Tareas Pausadas -->
-            <div v-for="tarea in tareasPausadas" :key="tarea._id" 
-                 class="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
-              <div class="flex justify-between items-start mb-2">
-                <div class="flex items-center gap-2">
-                  <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
-                  <span class="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
-                    <span>⏸️</span> Pausada
+            <div v-else class="space-y-4">
+              <!-- Tarea Activa (destacada) -->
+              <div v-if="tareaActiva" class="border-2 border-green-500 bg-gradient-to-r from-green-50 to-white rounded-xl p-5 shadow-md">
+                <div class="flex justify-between items-start mb-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <h3 class="font-bold text-gray-800 text-lg">{{ tareaActiva.titulo }}</h3>
+                    <span class="text-xs px-2 py-1 rounded-full bg-green-500 text-white flex items-center gap-1">
+                      <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                      ACTIVA
+                    </span>
+                  </div>
+                  <span :class="prioridadColorClass(tareaActiva.prioridad)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+                    {{ prioridadTextoLabel(tareaActiva.prioridad) }}
                   </span>
                 </div>
-                <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs">
-                  {{ prioridadTextoLabel(tarea.prioridad) }}
-                </span>
-              </div>
-              <p class="text-sm text-gray-600 mb-3">{{ tarea.descripcion || 'Sin descripción' }}</p>
-              
-              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
-                <div>
-                  <span class="text-gray-500">Progreso:</span>
-                  <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div class="bg-blue-600 rounded-full h-2" :style="{ width: `${tarea.porcentajeCompletado}%` }"></div>
+                <p class="text-sm text-gray-600 mb-4">{{ tareaActiva.descripcion || 'Sin descripción' }}</p>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                  <div>
+                    <span class="text-gray-500">Progreso:</span>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div class="bg-green-500 rounded-full h-2 transition-all duration-500" :style="{ width: `${tareaActiva.porcentajeCompletado}%` }"></div>
+                    </div>
+                    <span class="text-xs font-medium text-green-600">{{ tareaActiva.porcentajeCompletado }}%</span>
                   </div>
-                  <span class="text-xs">{{ tarea.porcentajeCompletado }}%</span>
+                  <div>
+                    <span class="text-gray-500">Tiempo estimado:</span>
+                    <span class="font-medium ml-1 text-blue-600">{{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}</span>
+                  </div>
                 </div>
-                <div>
-                  <span class="text-gray-500">Tiempo trabajado:</span>
-                  <span class="font-medium ml-1">{{ formatTiempoReal(tarea) }}</span>
+                
+                <div class="flex gap-3">
+                  <button 
+                    @click="pausarTarea(tareaActiva._id)"
+                    class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition text-sm font-medium"
+                  >
+                    ⏸️ Pausar
+                  </button>
+                  <button 
+                    @click="abrirModalProgreso(tareaActiva)"
+                    class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition text-sm font-medium"
+                  >
+                    📊 Registrar progreso
+                  </button>
+                </div>
+                
+                <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" class="mt-4 pt-3 border-t border-gray-200 text-sm">
+                  <div class="flex items-center gap-2 text-gray-600">
+                    <span>👤 Cliente:</span>
+                    <span class="font-medium">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
+                    <span v-if="tareaActiva.clienteInfo.telefono" class="text-gray-500">📞 {{ tareaActiva.clienteInfo.telefono }}</span>
+                  </div>
                 </div>
               </div>
               
-              <div class="flex gap-2">
-                <button 
-                  v-if="tarea.tiempoEstimadoEmpleado === 0"
-                  @click="abrirModalTiempo(tarea)"
-                  class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition text-sm"
-                >
-                  🚀 Establecer tiempo
-                </button>
-                <button 
-                  v-else
-                  @click="reanudarTarea(tarea._id)"
-                  class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition text-sm"
-                >
-                  ▶️ Reanudar
-                </button>
-                <button 
-                  @click="abrirModalProgreso(tarea)"
-                  class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition text-sm"
-                >
-                  📊 Registrar progreso
-                </button>
-              </div>
-              
-              <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 text-sm">
-                <div class="flex items-center gap-2 text-gray-600">
-                  <span>👤 Cliente:</span>
-                  <span class="font-medium">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
-                  <span v-if="tarea.clienteInfo.telefono" class="text-gray-500">📞 {{ tarea.clienteInfo.telefono }}</span>
+              <!-- Tareas Pausadas -->
+              <div v-for="tarea in tareasPausadas" :key="tarea._id" 
+                   class="border border-yellow-200 bg-gradient-to-r from-yellow-50 to-white rounded-xl p-4">
+                <div class="flex justify-between items-start mb-2">
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
+                      ⏸️ Pausada
+                    </span>
+                  </div>
+                  <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+                    {{ prioridadTextoLabel(tarea.prioridad) }}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ tarea.descripcion || 'Sin descripción' }}</p>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                  <div>
+                    <span class="text-gray-500">Progreso:</span>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div class="bg-blue-500 rounded-full h-2 transition-all" :style="{ width: `${tarea.porcentajeCompletado}%` }"></div>
+                    </div>
+                    <span class="text-xs">{{ tarea.porcentajeCompletado }}%</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Tiempo trabajado:</span>
+                    <span class="font-medium ml-1">{{ formatTiempoReal(tarea) }}</span>
+                  </div>
+                </div>
+                
+                <div class="flex gap-3">
+                  <button 
+                    v-if="tarea.tiempoEstimadoEmpleado === 0"
+                    @click="abrirModalTiempo(tarea)"
+                    class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition text-sm font-medium"
+                  >
+                    🚀 Establecer tiempo
+                  </button>
+                  <button 
+                    v-else
+                    @click="reanudarTarea(tarea._id)"
+                    class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition text-sm font-medium"
+                  >
+                    ▶️ Reanudar
+                  </button>
+                  <button 
+                    @click="abrirModalProgreso(tarea)"
+                    class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition text-sm font-medium"
+                  >
+                    📊 Registrar progreso
+                  </button>
+                </div>
+                
+                <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 text-sm">
+                  <div class="flex items-center gap-2 text-gray-600">
+                    <span>👤 Cliente:</span>
+                    <span class="font-medium">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
+                    <span v-if="tarea.clienteInfo.telefono" class="text-gray-500">📞 {{ tarea.clienteInfo.telefono }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2876,28 +4618,41 @@ pages\index.vue
         </div>
         
         <!-- Tareas completadas -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">✅ Tareas Completadas</h2>
-          
-          <div v-if="tareasCompletadas.length === 0" class="text-center py-8 text-gray-500">
-            Aún no has completado ninguna tarea
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <h2 class="text-lg font-bold text-gray-800">✅ Tareas Completadas</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Historial de tareas finalizadas</p>
           </div>
           
-          <div v-else class="space-y-3">
-            <div v-for="tarea in tareasCompletadas" :key="tarea._id" class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-              <div class="flex justify-between items-start">
-                <div>
-                  <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
-                  <p class="text-xs text-gray-500 mt-1">Completada: {{ new Date(tarea.fechaFinalizada || tarea.updatedAt).toLocaleDateString() }}</p>
-                </div>
-                <div v-if="tarea.calificacion?.puntaje" class="flex items-center gap-1">
-                  <span class="text-yellow-500">★</span>
-                  <span class="font-medium">{{ tarea.calificacion.puntaje }}/5</span>
-                </div>
-                <span v-else class="text-xs text-gray-400">Sin calificar</span>
+          <div class="p-5">
+            <div v-if="tareasCompletadas.length === 0" class="text-center py-8">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="text-2xl">🏆</span>
               </div>
-              <div v-if="tarea.calificacion?.comentario" class="mt-2 text-sm text-gray-600 italic">
-                "{{ tarea.calificacion.comentario }}"
+              <p class="text-gray-500">Aún no has completado ninguna tarea</p>
+            </div>
+            
+            <div v-else class="space-y-3">
+              <div v-for="tarea in tareasCompletadas" :key="tarea._id" class="border border-gray-200 rounded-lg p-4 bg-gray-50 hover:shadow-md transition">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                      Completada: {{ new Date(tarea.fechaFinalizada || tarea.updatedAt).toLocaleDateString() }}
+                    </p>
+                  </div>
+                  <div v-if="tarea.calificacion?.puntaje" class="flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-full">
+                    <span class="text-yellow-500">★</span>
+                    <span class="font-medium text-gray-700">{{ tarea.calificacion.puntaje }}/5</span>
+                  </div>
+                  <span v-else-if="tarea.calificacion?.autoFinalizada" class="text-xs text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                    Auto-finalizada
+                  </span>
+                  <span v-else class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">Sin calificar</span>
+                </div>
+                <div v-if="tarea.calificacion?.comentario" class="mt-2 text-sm text-gray-600 italic bg-white p-2 rounded">
+                  "{{ tarea.calificacion.comentario }}"
+                </div>
               </div>
             </div>
           </div>
@@ -2916,52 +4671,79 @@ pages\index.vue
           </button>
         </div>
         
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Mis Solicitudes</h2>
-          
-          <div v-if="misSolicitudes.length === 0" class="text-center py-8 text-gray-500">
-            No tienes solicitudes. Crea una nueva solicitud.
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <h2 class="text-lg font-bold text-gray-800">📋 Mis Solicitudes</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Seguimiento de tus solicitudes</p>
           </div>
           
-          <div v-else class="space-y-4">
-            <div v-for="tarea in misSolicitudes" :key="tarea._id" class="border border-gray-200 rounded-lg p-4">
-              <div class="flex justify-between items-start mb-2">
-                <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
-                <span :class="estadoColorClass(tarea.estado)" class="px-2 py-1 rounded-full text-xs font-medium">
-                  {{ estadoTextoLabel(tarea.estado) }}
-                </span>
+          <div class="p-5">
+            <div v-if="misSolicitudes.length === 0" class="text-center py-8">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="text-2xl">📭</span>
               </div>
-              <p class="text-sm text-gray-600 mb-3">{{ tarea.descripcion || 'Sin descripción' }}</p>
-              
-              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
-                <div>
-                  <span class="text-gray-500">Empleado asignado:</span>
-                  <span class="font-medium ml-1">{{ tarea.asignadoA?.nombre || 'Sin asignar' }}</span>
+              <p class="text-gray-500">No tienes solicitudes. Crea una nueva solicitud.</p>
+            </div>
+            
+            <div v-else class="space-y-4">
+              <div v-for="tarea in misSolicitudes" :key="tarea._id" class="border border-gray-200 rounded-xl p-5 hover:shadow-md transition">
+                <div class="flex justify-between items-start mb-3">
+                  <h3 class="font-bold text-gray-800 text-lg">{{ tarea.titulo }}</h3>
+                  <span :class="estadoColorClass(tarea.estado)" class="px-3 py-1 rounded-full text-xs font-medium">
+                    {{ estadoTextoLabel(tarea.estado) }}
+                  </span>
                 </div>
-                <div v-if="tarea.porcentajeCompletado > 0">
-                  <span class="text-gray-500">Progreso:</span>
-                  <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div class="bg-blue-600 rounded-full h-2" :style="{ width: `${tarea.porcentajeCompletado}%` }"></div>
+                <p class="text-sm text-gray-600 mb-4">{{ tarea.descripcion || 'Sin descripción' }}</p>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <span class="text-gray-500">👨‍💼 Empleado asignado:</span>
+                    <span class="font-medium ml-2 text-gray-800">{{ tarea.asignadoA?.nombre || 'Sin asignar' }}</span>
                   </div>
-                  <span class="text-xs">{{ tarea.porcentajeCompletado }}%</span>
+                  <div v-if="tarea.porcentajeCompletado > 0" class="bg-gray-50 rounded-lg p-2">
+                    <span class="text-gray-500">📊 Progreso:</span>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div class="bg-blue-500 rounded-full h-2 transition-all" :style="{ width: `${tarea.porcentajeCompletado}%` }"></div>
+                    </div>
+                    <span class="text-xs font-medium text-blue-600">{{ tarea.porcentajeCompletado }}%</span>
+                  </div>
                 </div>
-              </div>
-              
-              <button 
-                v-if="tarea.estado === 'revision_cliente' && !tarea.calificacion"
-                @click="abrirModalCalificar(tarea)"
-                class="mt-2 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition text-sm w-full"
-              >
-                ⭐ Calificar servicio
-              </button>
-              
-              <div v-if="tarea.calificacion?.puntaje" class="mt-3 pt-3 border-t border-gray-200">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-gray-600">Tu calificación:</span>
-                  <span class="text-yellow-500">{{ '★'.repeat(tarea.calificacion.puntaje) }}{{ '☆'.repeat(5 - tarea.calificacion.puntaje) }}</span>
-                  <span class="text-xs text-gray-500">({{ tarea.calificacion.puntaje }}/5)</span>
+                
+                <!-- Notificación de días restantes -->
+                <div v-if="tarea.estado === 'revision_cliente' && !tarea.calificacion && !tarea.calificacion?.autoFinalizada" 
+                     class="mb-4 p-3 rounded-lg" 
+                     :class="diasRestantes(tarea) <= 2 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'">
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg">⚠️</span>
+                    <span class="text-sm">
+                      {{ diasRestantes(tarea) <= 0 ? '¡Tarea por vencer! Revísala pronto.' : `Tienes ${diasRestantes(tarea)} días para revisar esta tarea` }}
+                    </span>
+                  </div>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">{{ tarea.calificacion.comentario }}</p>
+                
+                <button 
+                  v-if="tarea.estado === 'revision_cliente' && !tarea.calificacion && !tarea.calificacion?.autoFinalizada"
+                  @click="abrirModalCalificar(tarea)"
+                  class="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2.5 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition text-sm font-medium"
+                >
+                  ⭐ Calificar servicio
+                </button>
+                
+                <div v-if="tarea.calificacion?.puntaje" class="mt-4 pt-3 border-t border-gray-200">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-600">Tu calificación:</span>
+                    <span class="text-yellow-500 text-lg">{{ '★'.repeat(tarea.calificacion.puntaje) }}{{ '☆'.repeat(5 - tarea.calificacion.puntaje) }}</span>
+                    <span class="text-xs text-gray-500">({{ tarea.calificacion.puntaje }}/5)</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1 italic">{{ tarea.calificacion.comentario }}</p>
+                </div>
+                
+                <div v-if="tarea.calificacion?.autoFinalizada" class="mt-4 pt-3 border-t border-gray-200">
+                  <div class="flex items-center gap-2 text-orange-600">
+                    <span class="text-lg">🤖</span>
+                    <span class="text-sm">Esta tarea fue auto-finalizada por falta de revisión</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -2971,12 +4753,12 @@ pages\index.vue
       <!-- Sección pública para hacer solicitudes sin login -->
       <div v-else>
         <div class="max-w-2xl mx-auto">
-          <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 mb-6 text-white">
+          <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 mb-6 text-white">
             <h2 class="text-2xl font-bold mb-2">Bienvenido a Control de Personal</h2>
             <p class="text-blue-100">Sistema de gestión de tareas y servicios</p>
           </div>
           
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="text-center mb-6">
               <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span class="text-2xl">📝</span>
@@ -3059,7 +4841,7 @@ pages\index.vue
               <button
                 type="submit"
                 :disabled="loadingPublica"
-                class="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-medium"
+                class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-blue-700 transition disabled:opacity-50 font-medium"
               >
                 {{ loadingPublica ? 'Enviando...' : 'Enviar Solicitud' }}
               </button>
@@ -3074,18 +4856,18 @@ pages\index.vue
           </div>
           
           <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-              <div class="text-2xl mb-2">🔧</div>
+            <div class="bg-white rounded-xl p-4 border border-gray-200 text-center hover:shadow-md transition">
+              <div class="text-3xl mb-2">🔧</div>
               <h3 class="font-semibold text-gray-800">Servicios Rápidos</h3>
               <p class="text-xs text-gray-500 mt-1">Respuesta en menos de 24h</p>
             </div>
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-              <div class="text-2xl mb-2">⭐</div>
+            <div class="bg-white rounded-xl p-4 border border-gray-200 text-center hover:shadow-md transition">
+              <div class="text-3xl mb-2">⭐</div>
               <h3 class="font-semibold text-gray-800">Prioridad Alta</h3>
               <p class="text-xs text-gray-500 mt-1">Regístrate para obtener prioridad</p>
             </div>
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-              <div class="text-2xl mb-2">📊</div>
+            <div class="bg-white rounded-xl p-4 border border-gray-200 text-center hover:shadow-md transition">
+              <div class="text-3xl mb-2">📊</div>
               <h3 class="font-semibold text-gray-800">Seguimiento</h3>
               <p class="text-xs text-gray-500 mt-1">Sigue el estado de tu solicitud</p>
             </div>
@@ -3138,6 +4920,9 @@ import ModalTiempoEstimado from '~/components/ModalTiempoEstimado.vue';
 import RegistrarProgresoModal from '~/components/RegistrarProgresoModal.vue';
 import CalificarModal from '~/components/CalificarModal.vue';
 import EstadoEmpleados from '~/components/EstadoEmpleados.vue';
+import KanbanBoardProfesional from '~/components/KanbanBoardProfesional.vue';
+import ReportesAvanzados from '~/components/ReportesAvanzados.vue';
+import ConfiguracionAutoCierre from '~/components/ConfiguracionAutoCierre.vue';
 
 const authStore = useAuthStore();
 const tarjetasStore = useTarjetasStore();
@@ -3164,7 +4949,8 @@ const rolBadgeClass = computed(() => {
 const tabsJefe = ref([
   { key: 'kanban', label: 'Kanban', icon: '📌' },
   { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { key: 'reportes', label: 'Reportes', icon: '📈' }
+  { key: 'reportes', label: 'Reportes', icon: '📈' },
+  { key: 'configuracion', label: 'Configuración', icon: '⚙️' }
 ]);
 
 const activeTab = ref('kanban');
@@ -3231,11 +5017,6 @@ const misSolicitudes = computed(() => {
   return tarjetasStore.tarjetas;
 });
 
-// Métricas jefe
-const eficienciaGeneral = ref(0);
-const totalHorasExtras = ref(0);
-const calificacionGeneral = ref(0);
-
 // Funciones de utilidad
 const formatTiempo = (minutos) => {
   if (!minutos && minutos !== 0) return '0 min';
@@ -3294,12 +5075,22 @@ const estadoColorClass = (estado) => {
   return map[estado] || 'bg-gray-100 text-gray-700';
 };
 
+// Calcular días restantes para revisión del cliente
+const diasRestantes = (tarea) => {
+  if (!tarea.createdAt) return 0;
+  const fechaCreacion = new Date(tarea.createdAt);
+  const fechaActual = new Date();
+  const diasTranscurridos = Math.floor((fechaActual - fechaCreacion) / (1000 * 60 * 60 * 24));
+  // Por defecto 5 días, pero idealmente vendría de la configuración
+  const diasMaximos = 5;
+  return Math.max(0, diasMaximos - diasTranscurridos);
+};
+
 // Recargar datos
 const recargarDatos = async () => {
   await tarjetasStore.fetchTarjetas();
   if (isJefe.value) {
     await tarjetasStore.fetchEstadisticas();
-    cargarMetricas();
   }
   if (isEmpleado.value || isJefe.value) {
     await cargarTareasDisponibles();
@@ -3414,55 +5205,6 @@ const handleTiempoEstablecido = async () => {
   await recargarDatos();
 };
 
-const cargarMetricas = () => {
-  const tarjetas = tarjetasStore.tarjetas;
-  const completadas = tarjetas.filter(t => t.estado === 'finalizada');
-  const conHorasExtras = tarjetas.filter(t => t.registroHoras?.some(r => r.esHoraExtra));
-  const calificadas = tarjetas.filter(t => t.calificacion?.puntaje);
-  
-  eficienciaGeneral.value = completadas.length ? Math.round((completadas.length / (tarjetas.length || 1)) * 100) : 0;
-  totalHorasExtras.value = conHorasExtras.reduce((sum, t) => {
-    return sum + (t.registroHoras?.filter(r => r.esHoraExtra).reduce((s, r) => s + (r.horasTrabajadas || 0), 0) || 0);
-  }, 0);
-  calificacionGeneral.value = calificadas.length ? (calificadas.reduce((sum, t) => sum + (t.calificacion?.puntaje || 0), 0) / calificadas.length).toFixed(1) : '0.0';
-};
-
-// ✅ NUEVA FUNCIÓN: Actualizar progreso automático en BD
-const actualizarProgresoEnBD = async () => {
-  if (!tareaActiva.value || !authStore.isAuthenticated) return;
-  
-  try {
-    const token = localStorage.getItem('token');
-    const url = `${config.public.apiBase}/tarjetas/${tareaActiva.value._id}/progreso-automatico`;
-    console.log('🔄 [PROGRESO-AUTOMATICO] Llamando a:', url);
-    
-    const response = await $fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    
-    console.log('✅ [PROGRESO-AUTOMATICO] Respuesta:', response);
-    
-    // Si hubo cambio en el estado (por ejemplo, pasó a revisión), recargar datos
-    if (response.huboCambio || response.estado !== tareaActiva.value.estado) {
-      console.log('📢 Hubo cambio en la tarea, recargando datos...');
-      await recargarDatos();
-    }
-  } catch (error) {
-    console.error('❌ Error en progreso automático:', error);
-  }
-};
-
-// Iniciar intervalo de actualización de tareas activas
-const iniciarIntervaloTareasActivas = () => {
-  if (intervaloTareasActivas) clearInterval(intervaloTareasActivas);
-  intervaloTareasActivas = setInterval(async () => {
-    if (tareaActiva.value && authStore.isAuthenticated) {
-      console.log('🔄 Actualizando progreso de tarea activa en BD...');
-      await actualizarProgresoEnBD();
-    }
-  }, 5000);
-};
-
 // Solicitud pública
 const handleSolicitudPublica = async (event) => {
   if (event) {
@@ -3538,7 +5280,6 @@ onMounted(async () => {
   
   if (authStore.isAuthenticated) {
     await recargarDatos();
-    iniciarIntervaloTareasActivas();
   }
   
   pollingInterval = setInterval(async () => {
@@ -3573,6 +5314,12 @@ const abrirModalTareaExtra = () => {
 }
 .animate-pulse {
   animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .line-clamp-2 {
   display: -webkit-box;
@@ -5023,4 +6770,4 @@ export const useTarjetasStore = defineStore('tarjetas', {
     }
   }
 }); 
-Total archivos: 30 
+Total archivos: 35 

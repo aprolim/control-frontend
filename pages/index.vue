@@ -5,7 +5,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-14">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
               <span class="text-white text-sm font-bold">CP</span>
             </div>
             <h1 class="text-base font-semibold text-gray-800">Control de Personal</h1>
@@ -13,7 +13,7 @@
           
           <div class="flex items-center gap-3">
             <div class="flex items-center gap-2">
-              <div class="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
+              <div class="w-7 h-7 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
                 <span class="text-xs font-medium text-blue-700">{{ authStore.user?.nombre?.charAt(0) }}</span>
               </div>
               <span class="text-sm text-gray-700 hidden sm:inline">{{ authStore.user?.nombre?.split(' ')[0] }}</span>
@@ -35,7 +35,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
               <span class="text-white text-sm font-bold">CP</span>
             </div>
             <h1 class="text-base font-semibold text-gray-800">Control de Personal</h1>
@@ -60,8 +60,8 @@
             v-for="tab in tabsJefe"
             :key="tab.key"
             @click="activeTab = tab.key"
-            :class="activeTab === tab.key ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'"
-            class="px-3 py-1.5 rounded-md transition flex items-center gap-1.5 text-sm shadow-sm"
+            :class="activeTab === tab.key ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'"
+            class="px-3 py-1.5 rounded-md transition flex items-center gap-1.5 text-sm"
           >
             <span class="text-base">{{ tab.icon }}</span>
             <span>{{ tab.label }}</span>
@@ -82,7 +82,7 @@
         </div>
         
         <div v-if="activeTab === 'kanban'">
-          <KanbanBoard ref="kanbanBoardRef" />
+          <KanbanBoardProfesional ref="kanbanBoardRef" />
         </div>
         
         <div v-if="activeTab === 'dashboard'">
@@ -90,27 +90,11 @@
         </div>
         
         <div v-if="activeTab === 'reportes'">
-          <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-            <h2 class="text-lg font-bold mb-3 text-gray-800">📈 Reportes Avanzados</h2>
-            <p class="text-sm text-gray-500">Próximamente: Exportar a Excel, PDF, reportes personalizados</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-              <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                <h3 class="text-sm font-semibold text-gray-800">📊 Productividad</h3>
-                <p class="text-xl font-bold text-blue-600">{{ eficienciaGeneral }}%</p>
-                <p class="text-xs text-gray-500">Eficiencia del equipo</p>
-              </div>
-              <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                <h3 class="text-sm font-semibold text-gray-800">⏱️ Horas Extras</h3>
-                <p class="text-xl font-bold text-blue-600">{{ totalHorasExtras }}h</p>
-                <p class="text-xs text-gray-500">Últimos 30 días</p>
-              </div>
-              <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                <h3 class="text-sm font-semibold text-gray-800">⭐ Satisfacción</h3>
-                <p class="text-xl font-bold text-blue-600">{{ calificacionGeneral }}</p>
-                <p class="text-xs text-gray-500">Promedio clientes</p>
-              </div>
-            </div>
-          </div>
+          <ReportesAvanzados />
+        </div>
+        
+        <div v-if="activeTab === 'configuracion'">
+          <ConfiguracionAutoCierre />
         </div>
       </div>
       
@@ -139,179 +123,201 @@
         </div>
         
         <!-- Tareas disponibles para tomar -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-gray-800">📋 Tareas Disponibles</h2>
-            <button 
-              @click="tomarSiguienteTarea" 
-              :disabled="cargandoTarea || tareasDisponibles.length === 0"
-              class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition flex items-center gap-2"
-            >
-              <span>🎯</span>
-              {{ cargandoTarea ? 'Tomando...' : 'Tomar Siguiente Tarea' }}
-            </button>
-          </div>
-          
-          <div v-if="cargandoDisponibles" class="text-center py-8 text-gray-500">
-            <div class="animate-pulse">Cargando tareas disponibles...</div>
-          </div>
-          
-          <div v-else-if="tareasDisponibles.length === 0" class="text-center py-8 text-gray-500">
-            No hay tareas disponibles en este momento
-          </div>
-          
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div 
-              v-for="tarea in tareasDisponibles" 
-              :key="tarea._id"
-              class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition cursor-pointer hover:border-green-300"
-              @click="tomarTareaEspecifica(tarea._id)"
-            >
-              <div class="flex justify-between items-start mb-2">
-                <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
-                <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs">
-                  {{ prioridadTextoLabel(tarea.prioridad) }}
-                </span>
-              </div>
-              <p class="text-sm text-gray-600 mb-2 line-clamp-2">{{ tarea.descripcion || 'Sin descripción' }}</p>
-              <div class="text-xs text-gray-500">
-                <div v-if="tarea.clienteInfo">
-                  <span>👤 {{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
-                  <span v-if="tarea.clienteInfo.telefono" class="ml-2">📞 {{ tarea.clienteInfo.telefono }}</span>
-                </div>
-                <div class="mt-1">📅 Creada: {{ new Date(tarea.createdAt).toLocaleDateString() }}</div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+          <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <div class="flex justify-between items-center">
+              <div>
+                <h2 class="text-lg font-bold text-gray-800">📋 Tareas Disponibles</h2>
+                <p class="text-xs text-gray-500 mt-0.5">Selecciona una tarea para comenzar a trabajar</p>
               </div>
               <button 
-                class="mt-3 w-full bg-green-500 text-white py-1.5 rounded text-sm hover:bg-green-600 transition"
-                @click.stop="tomarTareaEspecifica(tarea._id)"
+                @click="tomarSiguienteTarea" 
+                :disabled="cargandoTarea || tareasDisponibles.length === 0"
+                class="bg-gradient-to-r from-green-500 to-green-600 text-white px-5 py-2 rounded-lg hover:from-green-600 hover:to-green-700 disabled:opacity-50 transition flex items-center gap-2 shadow-sm"
               >
-                Tomar tarea
+                <span>🎯</span>
+                {{ cargandoTarea ? 'Tomando...' : 'Tomar Siguiente Tarea' }}
               </button>
+            </div>
+          </div>
+          
+          <div class="p-5">
+            <div v-if="cargandoDisponibles" class="text-center py-8">
+              <div class="animate-pulse">
+                <div class="w-12 h-12 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                <div class="text-gray-500">Cargando tareas disponibles...</div>
+              </div>
+            </div>
+            
+            <div v-else-if="tareasDisponibles.length === 0" class="text-center py-8">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="text-2xl">📭</span>
+              </div>
+              <p class="text-gray-500">No hay tareas disponibles en este momento</p>
+            </div>
+            
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div 
+                v-for="tarea in tareasDisponibles" 
+                :key="tarea._id"
+                class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer hover:border-green-300 hover:transform hover:-translate-y-1"
+                @click="tomarTareaEspecifica(tarea._id)"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <h3 class="font-semibold text-gray-800 line-clamp-1">{{ tarea.titulo }}</h3>
+                  <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+                    {{ prioridadTextoLabel(tarea.prioridad) }}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ tarea.descripcion || 'Sin descripción' }}</p>
+                <div class="text-xs text-gray-500">
+                  <div v-if="tarea.clienteInfo" class="flex items-center gap-2 mb-1">
+                    <span>👤 {{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
+                    <span v-if="tarea.clienteInfo.telefono" class="text-gray-400">📞 {{ tarea.clienteInfo.telefono }}</span>
+                  </div>
+                  <div>📅 {{ new Date(tarea.createdAt).toLocaleDateString() }}</div>
+                </div>
+                <button 
+                  class="mt-3 w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-1.5 rounded text-sm hover:from-green-600 hover:to-green-700 transition"
+                  @click.stop="tomarTareaEspecifica(tarea._id)"
+                >
+                  Tomar tarea
+                </button>
+              </div>
             </div>
           </div>
         </div>
         
         <!-- Mis Tareas - Activa y Pausadas -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">⚙️ Mis Tareas</h2>
-          
-          <div v-if="tareasEnProgreso.length === 0 && !tareaActiva" class="text-center py-8 text-gray-500">
-            No tienes tareas asignadas actualmente
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+          <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <h2 class="text-lg font-bold text-gray-800">⚙️ Mis Tareas</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Tareas que tienes asignadas actualmente</p>
           </div>
           
-          <div v-else class="space-y-4">
-            <!-- Tarea Activa (destacada) -->
-            <div v-if="tareaActiva" class="border-2 border-green-500 bg-green-50 rounded-lg p-4 shadow-md">
-              <div class="flex justify-between items-start mb-2">
-                <div class="flex items-center gap-2">
-                  <h3 class="font-bold text-gray-800">{{ tareaActiva.titulo }}</h3>
-                  <span class="text-xs px-2 py-1 rounded-full bg-green-500 text-white flex items-center gap-1">
-                    <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                    ACTIVA
-                  </span>
-                </div>
-                <span :class="prioridadColorClass(tareaActiva.prioridad)" class="px-2 py-0.5 rounded-full text-xs">
-                  {{ prioridadTextoLabel(tareaActiva.prioridad) }}
-                </span>
+          <div class="p-5">
+            <div v-if="tareasEnProgreso.length === 0 && !tareaActiva" class="text-center py-8">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="text-2xl">📭</span>
               </div>
-              <p class="text-sm text-gray-600 mb-3">{{ tareaActiva.descripcion || 'Sin descripción' }}</p>
-              
-              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
-                <div>
-                  <span class="text-gray-500">Progreso:</span>
-                  <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div class="bg-green-500 rounded-full h-2" :style="{ width: `${tareaActiva.porcentajeCompletado}%` }"></div>
-                  </div>
-                  <span class="text-xs">{{ tareaActiva.porcentajeCompletado }}%</span>
-                </div>
-                <div>
-                  <span class="text-gray-500">Tiempo estimado:</span>
-                  <span class="font-medium ml-1">{{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}</span>
-                </div>
-              </div>
-              
-              <div class="flex gap-2">
-                <button 
-                  @click="pausarTarea(tareaActiva._id)"
-                  class="flex-1 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition text-sm"
-                >
-                  ⏸️ Pausar
-                </button>
-                <button 
-                  @click="abrirModalProgreso(tareaActiva)"
-                  class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition text-sm"
-                >
-                  📊 Registrar progreso
-                </button>
-              </div>
-              
-              <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 text-sm">
-                <div class="flex items-center gap-2 text-gray-600">
-                  <span>👤 Cliente:</span>
-                  <span class="font-medium">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
-                  <span v-if="tareaActiva.clienteInfo.telefono" class="text-gray-500">📞 {{ tareaActiva.clienteInfo.telefono }}</span>
-                </div>
-              </div>
+              <p class="text-gray-500">No tienes tareas asignadas actualmente</p>
             </div>
             
-            <!-- Tareas Pausadas -->
-            <div v-for="tarea in tareasPausadas" :key="tarea._id" 
-                 class="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
-              <div class="flex justify-between items-start mb-2">
-                <div class="flex items-center gap-2">
-                  <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
-                  <span class="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
-                    <span>⏸️</span> Pausada
+            <div v-else class="space-y-4">
+              <!-- Tarea Activa (destacada) -->
+              <div v-if="tareaActiva" class="border-2 border-green-500 bg-gradient-to-r from-green-50 to-white rounded-xl p-5 shadow-md">
+                <div class="flex justify-between items-start mb-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <h3 class="font-bold text-gray-800 text-lg">{{ tareaActiva.titulo }}</h3>
+                    <span class="text-xs px-2 py-1 rounded-full bg-green-500 text-white flex items-center gap-1">
+                      <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                      ACTIVA
+                    </span>
+                  </div>
+                  <span :class="prioridadColorClass(tareaActiva.prioridad)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+                    {{ prioridadTextoLabel(tareaActiva.prioridad) }}
                   </span>
                 </div>
-                <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs">
-                  {{ prioridadTextoLabel(tarea.prioridad) }}
-                </span>
-              </div>
-              <p class="text-sm text-gray-600 mb-3">{{ tarea.descripcion || 'Sin descripción' }}</p>
-              
-              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
-                <div>
-                  <span class="text-gray-500">Progreso:</span>
-                  <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div class="bg-blue-600 rounded-full h-2" :style="{ width: `${tarea.porcentajeCompletado}%` }"></div>
+                <p class="text-sm text-gray-600 mb-4">{{ tareaActiva.descripcion || 'Sin descripción' }}</p>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                  <div>
+                    <span class="text-gray-500">Progreso:</span>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div class="bg-green-500 rounded-full h-2 transition-all duration-500" :style="{ width: `${tareaActiva.porcentajeCompletado}%` }"></div>
+                    </div>
+                    <span class="text-xs font-medium text-green-600">{{ tareaActiva.porcentajeCompletado }}%</span>
                   </div>
-                  <span class="text-xs">{{ tarea.porcentajeCompletado }}%</span>
+                  <div>
+                    <span class="text-gray-500">Tiempo estimado:</span>
+                    <span class="font-medium ml-1 text-blue-600">{{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}</span>
+                  </div>
                 </div>
-                <div>
-                  <span class="text-gray-500">Tiempo trabajado:</span>
-                  <span class="font-medium ml-1">{{ formatTiempoReal(tarea) }}</span>
+                
+                <div class="flex gap-3">
+                  <button 
+                    @click="pausarTarea(tareaActiva._id)"
+                    class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition text-sm font-medium"
+                  >
+                    ⏸️ Pausar
+                  </button>
+                  <button 
+                    @click="abrirModalProgreso(tareaActiva)"
+                    class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition text-sm font-medium"
+                  >
+                    📊 Registrar progreso
+                  </button>
+                </div>
+                
+                <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" class="mt-4 pt-3 border-t border-gray-200 text-sm">
+                  <div class="flex items-center gap-2 text-gray-600">
+                    <span>👤 Cliente:</span>
+                    <span class="font-medium">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
+                    <span v-if="tareaActiva.clienteInfo.telefono" class="text-gray-500">📞 {{ tareaActiva.clienteInfo.telefono }}</span>
+                  </div>
                 </div>
               </div>
               
-              <div class="flex gap-2">
-                <button 
-                  v-if="tarea.tiempoEstimadoEmpleado === 0"
-                  @click="abrirModalTiempo(tarea)"
-                  class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition text-sm"
-                >
-                  🚀 Establecer tiempo
-                </button>
-                <button 
-                  v-else
-                  @click="reanudarTarea(tarea._id)"
-                  class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition text-sm"
-                >
-                  ▶️ Reanudar
-                </button>
-                <button 
-                  @click="abrirModalProgreso(tarea)"
-                  class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition text-sm"
-                >
-                  📊 Registrar progreso
-                </button>
-              </div>
-              
-              <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 text-sm">
-                <div class="flex items-center gap-2 text-gray-600">
-                  <span>👤 Cliente:</span>
-                  <span class="font-medium">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
-                  <span v-if="tarea.clienteInfo.telefono" class="text-gray-500">📞 {{ tarea.clienteInfo.telefono }}</span>
+              <!-- Tareas Pausadas -->
+              <div v-for="tarea in tareasPausadas" :key="tarea._id" 
+                   class="border border-yellow-200 bg-gradient-to-r from-yellow-50 to-white rounded-xl p-4">
+                <div class="flex justify-between items-start mb-2">
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
+                      ⏸️ Pausada
+                    </span>
+                  </div>
+                  <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+                    {{ prioridadTextoLabel(tarea.prioridad) }}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ tarea.descripcion || 'Sin descripción' }}</p>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                  <div>
+                    <span class="text-gray-500">Progreso:</span>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div class="bg-blue-500 rounded-full h-2 transition-all" :style="{ width: `${tarea.porcentajeCompletado}%` }"></div>
+                    </div>
+                    <span class="text-xs">{{ tarea.porcentajeCompletado }}%</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Tiempo trabajado:</span>
+                    <span class="font-medium ml-1">{{ formatTiempoReal(tarea) }}</span>
+                  </div>
+                </div>
+                
+                <div class="flex gap-3">
+                  <button 
+                    v-if="tarea.tiempoEstimadoEmpleado === 0"
+                    @click="abrirModalTiempo(tarea)"
+                    class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition text-sm font-medium"
+                  >
+                    🚀 Establecer tiempo
+                  </button>
+                  <button 
+                    v-else
+                    @click="reanudarTarea(tarea._id)"
+                    class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition text-sm font-medium"
+                  >
+                    ▶️ Reanudar
+                  </button>
+                  <button 
+                    @click="abrirModalProgreso(tarea)"
+                    class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition text-sm font-medium"
+                  >
+                    📊 Registrar progreso
+                  </button>
+                </div>
+                
+                <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 text-sm">
+                  <div class="flex items-center gap-2 text-gray-600">
+                    <span>👤 Cliente:</span>
+                    <span class="font-medium">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
+                    <span v-if="tarea.clienteInfo.telefono" class="text-gray-500">📞 {{ tarea.clienteInfo.telefono }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -319,28 +325,41 @@
         </div>
         
         <!-- Tareas completadas -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">✅ Tareas Completadas</h2>
-          
-          <div v-if="tareasCompletadas.length === 0" class="text-center py-8 text-gray-500">
-            Aún no has completado ninguna tarea
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <h2 class="text-lg font-bold text-gray-800">✅ Tareas Completadas</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Historial de tareas finalizadas</p>
           </div>
           
-          <div v-else class="space-y-3">
-            <div v-for="tarea in tareasCompletadas" :key="tarea._id" class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-              <div class="flex justify-between items-start">
-                <div>
-                  <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
-                  <p class="text-xs text-gray-500 mt-1">Completada: {{ new Date(tarea.fechaFinalizada || tarea.updatedAt).toLocaleDateString() }}</p>
-                </div>
-                <div v-if="tarea.calificacion?.puntaje" class="flex items-center gap-1">
-                  <span class="text-yellow-500">★</span>
-                  <span class="font-medium">{{ tarea.calificacion.puntaje }}/5</span>
-                </div>
-                <span v-else class="text-xs text-gray-400">Sin calificar</span>
+          <div class="p-5">
+            <div v-if="tareasCompletadas.length === 0" class="text-center py-8">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="text-2xl">🏆</span>
               </div>
-              <div v-if="tarea.calificacion?.comentario" class="mt-2 text-sm text-gray-600 italic">
-                "{{ tarea.calificacion.comentario }}"
+              <p class="text-gray-500">Aún no has completado ninguna tarea</p>
+            </div>
+            
+            <div v-else class="space-y-3">
+              <div v-for="tarea in tareasCompletadas" :key="tarea._id" class="border border-gray-200 rounded-lg p-4 bg-gray-50 hover:shadow-md transition">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                      Completada: {{ new Date(tarea.fechaFinalizada || tarea.updatedAt).toLocaleDateString() }}
+                    </p>
+                  </div>
+                  <div v-if="tarea.calificacion?.puntaje" class="flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-full">
+                    <span class="text-yellow-500">★</span>
+                    <span class="font-medium text-gray-700">{{ tarea.calificacion.puntaje }}/5</span>
+                  </div>
+                  <span v-else-if="tarea.calificacion?.autoFinalizada" class="text-xs text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                    Auto-finalizada
+                  </span>
+                  <span v-else class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">Sin calificar</span>
+                </div>
+                <div v-if="tarea.calificacion?.comentario" class="mt-2 text-sm text-gray-600 italic bg-white p-2 rounded">
+                  "{{ tarea.calificacion.comentario }}"
+                </div>
               </div>
             </div>
           </div>
@@ -359,52 +378,79 @@
           </button>
         </div>
         
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Mis Solicitudes</h2>
-          
-          <div v-if="misSolicitudes.length === 0" class="text-center py-8 text-gray-500">
-            No tienes solicitudes. Crea una nueva solicitud.
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <h2 class="text-lg font-bold text-gray-800">📋 Mis Solicitudes</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Seguimiento de tus solicitudes</p>
           </div>
           
-          <div v-else class="space-y-4">
-            <div v-for="tarea in misSolicitudes" :key="tarea._id" class="border border-gray-200 rounded-lg p-4">
-              <div class="flex justify-between items-start mb-2">
-                <h3 class="font-semibold text-gray-800">{{ tarea.titulo }}</h3>
-                <span :class="estadoColorClass(tarea.estado)" class="px-2 py-1 rounded-full text-xs font-medium">
-                  {{ estadoTextoLabel(tarea.estado) }}
-                </span>
+          <div class="p-5">
+            <div v-if="misSolicitudes.length === 0" class="text-center py-8">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="text-2xl">📭</span>
               </div>
-              <p class="text-sm text-gray-600 mb-3">{{ tarea.descripcion || 'Sin descripción' }}</p>
-              
-              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
-                <div>
-                  <span class="text-gray-500">Empleado asignado:</span>
-                  <span class="font-medium ml-1">{{ tarea.asignadoA?.nombre || 'Sin asignar' }}</span>
+              <p class="text-gray-500">No tienes solicitudes. Crea una nueva solicitud.</p>
+            </div>
+            
+            <div v-else class="space-y-4">
+              <div v-for="tarea in misSolicitudes" :key="tarea._id" class="border border-gray-200 rounded-xl p-5 hover:shadow-md transition">
+                <div class="flex justify-between items-start mb-3">
+                  <h3 class="font-bold text-gray-800 text-lg">{{ tarea.titulo }}</h3>
+                  <span :class="estadoColorClass(tarea.estado)" class="px-3 py-1 rounded-full text-xs font-medium">
+                    {{ estadoTextoLabel(tarea.estado) }}
+                  </span>
                 </div>
-                <div v-if="tarea.porcentajeCompletado > 0">
-                  <span class="text-gray-500">Progreso:</span>
-                  <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div class="bg-blue-600 rounded-full h-2" :style="{ width: `${tarea.porcentajeCompletado}%` }"></div>
+                <p class="text-sm text-gray-600 mb-4">{{ tarea.descripcion || 'Sin descripción' }}</p>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <span class="text-gray-500">👨‍💼 Empleado asignado:</span>
+                    <span class="font-medium ml-2 text-gray-800">{{ tarea.asignadoA?.nombre || 'Sin asignar' }}</span>
                   </div>
-                  <span class="text-xs">{{ tarea.porcentajeCompletado }}%</span>
+                  <div v-if="tarea.porcentajeCompletado > 0" class="bg-gray-50 rounded-lg p-2">
+                    <span class="text-gray-500">📊 Progreso:</span>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div class="bg-blue-500 rounded-full h-2 transition-all" :style="{ width: `${tarea.porcentajeCompletado}%` }"></div>
+                    </div>
+                    <span class="text-xs font-medium text-blue-600">{{ tarea.porcentajeCompletado }}%</span>
+                  </div>
                 </div>
-              </div>
-              
-              <button 
-                v-if="tarea.estado === 'revision_cliente' && !tarea.calificacion"
-                @click="abrirModalCalificar(tarea)"
-                class="mt-2 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition text-sm w-full"
-              >
-                ⭐ Calificar servicio
-              </button>
-              
-              <div v-if="tarea.calificacion?.puntaje" class="mt-3 pt-3 border-t border-gray-200">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-gray-600">Tu calificación:</span>
-                  <span class="text-yellow-500">{{ '★'.repeat(tarea.calificacion.puntaje) }}{{ '☆'.repeat(5 - tarea.calificacion.puntaje) }}</span>
-                  <span class="text-xs text-gray-500">({{ tarea.calificacion.puntaje }}/5)</span>
+                
+                <!-- Notificación de días restantes -->
+                <div v-if="tarea.estado === 'revision_cliente' && !tarea.calificacion && !tarea.calificacion?.autoFinalizada" 
+                     class="mb-4 p-3 rounded-lg" 
+                     :class="diasRestantes(tarea) <= 2 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'">
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg">⚠️</span>
+                    <span class="text-sm">
+                      {{ diasRestantes(tarea) <= 0 ? '¡Tarea por vencer! Revísala pronto.' : `Tienes ${diasRestantes(tarea)} días para revisar esta tarea` }}
+                    </span>
+                  </div>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">{{ tarea.calificacion.comentario }}</p>
+                
+                <button 
+                  v-if="tarea.estado === 'revision_cliente' && !tarea.calificacion && !tarea.calificacion?.autoFinalizada"
+                  @click="abrirModalCalificar(tarea)"
+                  class="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2.5 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition text-sm font-medium"
+                >
+                  ⭐ Calificar servicio
+                </button>
+                
+                <div v-if="tarea.calificacion?.puntaje" class="mt-4 pt-3 border-t border-gray-200">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-600">Tu calificación:</span>
+                    <span class="text-yellow-500 text-lg">{{ '★'.repeat(tarea.calificacion.puntaje) }}{{ '☆'.repeat(5 - tarea.calificacion.puntaje) }}</span>
+                    <span class="text-xs text-gray-500">({{ tarea.calificacion.puntaje }}/5)</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1 italic">{{ tarea.calificacion.comentario }}</p>
+                </div>
+                
+                <div v-if="tarea.calificacion?.autoFinalizada" class="mt-4 pt-3 border-t border-gray-200">
+                  <div class="flex items-center gap-2 text-orange-600">
+                    <span class="text-lg">🤖</span>
+                    <span class="text-sm">Esta tarea fue auto-finalizada por falta de revisión</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -414,12 +460,12 @@
       <!-- Sección pública para hacer solicitudes sin login -->
       <div v-else>
         <div class="max-w-2xl mx-auto">
-          <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 mb-6 text-white">
+          <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 mb-6 text-white">
             <h2 class="text-2xl font-bold mb-2">Bienvenido a Control de Personal</h2>
             <p class="text-blue-100">Sistema de gestión de tareas y servicios</p>
           </div>
           
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="text-center mb-6">
               <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span class="text-2xl">📝</span>
@@ -502,7 +548,7 @@
               <button
                 type="submit"
                 :disabled="loadingPublica"
-                class="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-medium"
+                class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-blue-700 transition disabled:opacity-50 font-medium"
               >
                 {{ loadingPublica ? 'Enviando...' : 'Enviar Solicitud' }}
               </button>
@@ -517,18 +563,18 @@
           </div>
           
           <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-              <div class="text-2xl mb-2">🔧</div>
+            <div class="bg-white rounded-xl p-4 border border-gray-200 text-center hover:shadow-md transition">
+              <div class="text-3xl mb-2">🔧</div>
               <h3 class="font-semibold text-gray-800">Servicios Rápidos</h3>
               <p class="text-xs text-gray-500 mt-1">Respuesta en menos de 24h</p>
             </div>
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-              <div class="text-2xl mb-2">⭐</div>
+            <div class="bg-white rounded-xl p-4 border border-gray-200 text-center hover:shadow-md transition">
+              <div class="text-3xl mb-2">⭐</div>
               <h3 class="font-semibold text-gray-800">Prioridad Alta</h3>
               <p class="text-xs text-gray-500 mt-1">Regístrate para obtener prioridad</p>
             </div>
-            <div class="bg-white rounded-lg p-4 border border-gray-200 text-center">
-              <div class="text-2xl mb-2">📊</div>
+            <div class="bg-white rounded-xl p-4 border border-gray-200 text-center hover:shadow-md transition">
+              <div class="text-3xl mb-2">📊</div>
               <h3 class="font-semibold text-gray-800">Seguimiento</h3>
               <p class="text-xs text-gray-500 mt-1">Sigue el estado de tu solicitud</p>
             </div>
@@ -581,6 +627,9 @@ import ModalTiempoEstimado from '~/components/ModalTiempoEstimado.vue';
 import RegistrarProgresoModal from '~/components/RegistrarProgresoModal.vue';
 import CalificarModal from '~/components/CalificarModal.vue';
 import EstadoEmpleados from '~/components/EstadoEmpleados.vue';
+import KanbanBoardProfesional from '~/components/KanbanBoardProfesional.vue';
+import ReportesAvanzados from '~/components/ReportesAvanzados.vue';
+import ConfiguracionAutoCierre from '~/components/ConfiguracionAutoCierre.vue';
 
 const authStore = useAuthStore();
 const tarjetasStore = useTarjetasStore();
@@ -607,7 +656,8 @@ const rolBadgeClass = computed(() => {
 const tabsJefe = ref([
   { key: 'kanban', label: 'Kanban', icon: '📌' },
   { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { key: 'reportes', label: 'Reportes', icon: '📈' }
+  { key: 'reportes', label: 'Reportes', icon: '📈' },
+  { key: 'configuracion', label: 'Configuración', icon: '⚙️' }
 ]);
 
 const activeTab = ref('kanban');
@@ -674,11 +724,6 @@ const misSolicitudes = computed(() => {
   return tarjetasStore.tarjetas;
 });
 
-// Métricas jefe
-const eficienciaGeneral = ref(0);
-const totalHorasExtras = ref(0);
-const calificacionGeneral = ref(0);
-
 // Funciones de utilidad
 const formatTiempo = (minutos) => {
   if (!minutos && minutos !== 0) return '0 min';
@@ -737,12 +782,22 @@ const estadoColorClass = (estado) => {
   return map[estado] || 'bg-gray-100 text-gray-700';
 };
 
+// Calcular días restantes para revisión del cliente
+const diasRestantes = (tarea) => {
+  if (!tarea.createdAt) return 0;
+  const fechaCreacion = new Date(tarea.createdAt);
+  const fechaActual = new Date();
+  const diasTranscurridos = Math.floor((fechaActual - fechaCreacion) / (1000 * 60 * 60 * 24));
+  // Por defecto 5 días, pero idealmente vendría de la configuración
+  const diasMaximos = 5;
+  return Math.max(0, diasMaximos - diasTranscurridos);
+};
+
 // Recargar datos
 const recargarDatos = async () => {
   await tarjetasStore.fetchTarjetas();
   if (isJefe.value) {
     await tarjetasStore.fetchEstadisticas();
-    cargarMetricas();
   }
   if (isEmpleado.value || isJefe.value) {
     await cargarTareasDisponibles();
@@ -857,55 +912,6 @@ const handleTiempoEstablecido = async () => {
   await recargarDatos();
 };
 
-const cargarMetricas = () => {
-  const tarjetas = tarjetasStore.tarjetas;
-  const completadas = tarjetas.filter(t => t.estado === 'finalizada');
-  const conHorasExtras = tarjetas.filter(t => t.registroHoras?.some(r => r.esHoraExtra));
-  const calificadas = tarjetas.filter(t => t.calificacion?.puntaje);
-  
-  eficienciaGeneral.value = completadas.length ? Math.round((completadas.length / (tarjetas.length || 1)) * 100) : 0;
-  totalHorasExtras.value = conHorasExtras.reduce((sum, t) => {
-    return sum + (t.registroHoras?.filter(r => r.esHoraExtra).reduce((s, r) => s + (r.horasTrabajadas || 0), 0) || 0);
-  }, 0);
-  calificacionGeneral.value = calificadas.length ? (calificadas.reduce((sum, t) => sum + (t.calificacion?.puntaje || 0), 0) / calificadas.length).toFixed(1) : '0.0';
-};
-
-// ✅ NUEVA FUNCIÓN: Actualizar progreso automático en BD
-const actualizarProgresoEnBD = async () => {
-  if (!tareaActiva.value || !authStore.isAuthenticated) return;
-  
-  try {
-    const token = localStorage.getItem('token');
-    const url = `${config.public.apiBase}/tarjetas/${tareaActiva.value._id}/progreso-automatico`;
-    console.log('🔄 [PROGRESO-AUTOMATICO] Llamando a:', url);
-    
-    const response = await $fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    
-    console.log('✅ [PROGRESO-AUTOMATICO] Respuesta:', response);
-    
-    // Si hubo cambio en el estado (por ejemplo, pasó a revisión), recargar datos
-    if (response.huboCambio || response.estado !== tareaActiva.value.estado) {
-      console.log('📢 Hubo cambio en la tarea, recargando datos...');
-      await recargarDatos();
-    }
-  } catch (error) {
-    console.error('❌ Error en progreso automático:', error);
-  }
-};
-
-// Iniciar intervalo de actualización de tareas activas
-const iniciarIntervaloTareasActivas = () => {
-  if (intervaloTareasActivas) clearInterval(intervaloTareasActivas);
-  intervaloTareasActivas = setInterval(async () => {
-    if (tareaActiva.value && authStore.isAuthenticated) {
-      console.log('🔄 Actualizando progreso de tarea activa en BD...');
-      await actualizarProgresoEnBD();
-    }
-  }, 5000);
-};
-
 // Solicitud pública
 const handleSolicitudPublica = async (event) => {
   if (event) {
@@ -981,7 +987,6 @@ onMounted(async () => {
   
   if (authStore.isAuthenticated) {
     await recargarDatos();
-    iniciarIntervaloTareasActivas();
   }
   
   pollingInterval = setInterval(async () => {
@@ -1016,6 +1021,12 @@ const abrirModalTareaExtra = () => {
 }
 .animate-pulse {
   animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .line-clamp-2 {
   display: -webkit-box;
