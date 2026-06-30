@@ -4,8 +4,16 @@ export default defineNuxtConfig({
   modules: [
     '@pinia/nuxt',
     '@nuxtjs/tailwindcss',
-    '@vueuse/nuxt'
+    '@vueuse/nuxt',
+    '@nuxtjs/color-mode'
   ],
+  
+  colorMode: {
+    classSuffix: '',
+    preference: 'light',
+    fallback: 'light',
+    storageKey: 'nuxt-color-mode'
+  },
   
   runtimeConfig: {
     public: {
@@ -14,11 +22,16 @@ export default defineNuxtConfig({
     }
   },
   
+  // ✅ AGREGAR PARA EXPONER EN RED
+  devServer: {
+    host: '0.0.0.0',
+    port: 3000
+  },
+  
   plugins: ['~/plugins/socket.client.js'],
   
   ssr: false,
   
-  // Configuración crítica para deshabilitar WebSocket de Vite
   vite: {
     server: {
       hmr: false,
@@ -29,13 +42,10 @@ export default defineNuxtConfig({
     optimizeDeps: {
       include: ['chart.js', 'vue-chartjs', 'socket.io-client']
     },
-    // Deshabilitar completamente HMR
     hmr: false,
-    // Deshabilitar el middleware de Vite
     clearScreen: false
   },
   
-  // Configuración para deshabilitar características de desarrollo
   experimental: {
     inlineSSRStyles: false
   },
@@ -51,5 +61,5 @@ export default defineNuxtConfig({
     }
   },
   
-  compatibilityDate: '2024-01-01'
+  compatibilityDate: '2026-06-30'
 });

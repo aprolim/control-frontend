@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nuxt dev",
+    "dev": "nuxt dev --host 0.0.0.0",
     "build": "nuxt build",
     "generate": "nuxt generate",
-    "preview": "nuxt preview"
+    "preview": "nuxt preview --host 0.0.0.0"
   },
   "dependencies": {
     "@heroicons/vue": "^2.0.18",
+    "@nuxtjs/color-mode": "^4.0.0",
     "@nuxtjs/tailwindcss": "^6.11.3",
     "@pinia/nuxt": "^0.5.1",
     "@vueuse/nuxt": "^10.7.2",

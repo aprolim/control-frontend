@@ -4,20 +4,39 @@
 
 @layer base {
   body {
-    @apply bg-gray-100 text-gray-800;
+    @apply bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition;
+    @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition dark:bg-primary-700 dark:hover:bg-primary-800;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition;
+    @apply bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
   }
   
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none dark:bg-gray-800 dark:border-gray-600 dark:text-white;
+  }
+  
+  /* Estilos para tarjetas en modo oscuro */
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-700;
+  }
+  
+  /* Estilos para modales en modo oscuro */
+  .modal-content {
+    @apply bg-white dark:bg-gray-800;
+  }
+  
+  /* Estilos para tablas en modo oscuro */
+  .table-header {
+    @apply bg-gray-50 dark:bg-gray-900;
+  }
+  
+  .table-row {
+    @apply border-t border-gray-100 dark:border-gray-800;
   }
 }

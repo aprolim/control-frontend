@@ -1,36 +1,36 @@
 <template>
   <div class="kanban-profesional">
     <!-- Header con estadísticas rápidas -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
             <span class="text-white text-lg">📌</span>
           </div>
           <div>
-            <h1 class="text-xl font-bold text-gray-800">Tablero Kanban</h1>
-            <p class="text-sm text-gray-500">Arrastra las tareas entre columnas para actualizar su estado</p>
+            <h1 class="text-xl font-bold text-gray-800 dark:text-white">Tablero Kanban</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Arrastra las tareas entre columnas para actualizar su estado</p>
           </div>
         </div>
         
         <div class="flex gap-3">
           <div class="flex gap-2">
-            <div class="bg-blue-50 rounded-lg px-3 py-1.5 text-sm">
-              <span class="text-blue-600">Total:</span>
-              <span class="font-semibold ml-1 text-blue-700">{{ totalTareas }}</span>
+            <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg px-3 py-1.5 text-sm">
+              <span class="text-blue-600 dark:text-blue-400">Total:</span>
+              <span class="font-semibold ml-1 text-blue-700 dark:text-blue-300">{{ totalTareas }}</span>
             </div>
-            <div class="bg-green-50 rounded-lg px-3 py-1.5 text-sm">
-              <span class="text-green-600">Completadas:</span>
-              <span class="font-semibold ml-1 text-green-700">{{ tareasCompletadas }}</span>
+            <div class="bg-green-50 dark:bg-green-900/30 rounded-lg px-3 py-1.5 text-sm">
+              <span class="text-green-600 dark:text-green-400">Completadas:</span>
+              <span class="font-semibold ml-1 text-green-700 dark:text-green-300">{{ tareasCompletadas }}</span>
             </div>
-            <div class="bg-orange-50 rounded-lg px-3 py-1.5 text-sm">
-              <span class="text-orange-600">En progreso:</span>
-              <span class="font-semibold ml-1 text-orange-700">{{ tareasEnProgreso }}</span>
+            <div class="bg-orange-50 dark:bg-orange-900/30 rounded-lg px-3 py-1.5 text-sm">
+              <span class="text-orange-600 dark:text-orange-400">En progreso:</span>
+              <span class="font-semibold ml-1 text-orange-700 dark:text-orange-300">{{ tareasEnProgreso }}</span>
             </div>
           </div>
           <button
             @click="abrirModalTareaRapida"
-            class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition shadow-sm flex items-center gap-2"
+            class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition shadow-sm flex items-center gap-2 dark:from-blue-700 dark:to-blue-800"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -46,23 +46,23 @@
       <div
         v-for="column in columnas"
         :key="column.id"
-        class="kanban-column flex-shrink-0 w-96 bg-gray-50 rounded-xl shadow-sm border border-gray-200 flex flex-col"
+        class="kanban-column flex-shrink-0 w-96 bg-gray-50 dark:bg-gray-800/50 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col"
       >
         <!-- Header de columna -->
-        <div class="p-4 border-b border-gray-200 bg-white rounded-t-xl">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-xl">
           <div class="flex justify-between items-center">
             <div class="flex items-center gap-2">
               <div :class="column.color" class="w-2.5 h-2.5 rounded-full"></div>
-              <h3 class="font-semibold text-gray-800">{{ column.titulo }}</h3>
+              <h3 class="font-semibold text-gray-800 dark:text-white">{{ column.titulo }}</h3>
             </div>
             <div class="flex items-center gap-2">
-              <span class="bg-gray-100 px-2 py-0.5 rounded-full text-xs text-gray-600 font-medium">
+              <span class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full text-xs text-gray-600 dark:text-gray-300 font-medium">
                 {{ column.tareas.length }}
               </span>
               <button
                 v-if="column.permiteAgregar"
                 @click="abrirModalTareaRapida"
-                class="text-gray-400 hover:text-blue-600 transition"
+                class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -93,10 +93,10 @@
           
           <!-- Placeholder cuando está vacío -->
           <div v-if="column.tareas.length === 0" class="text-center py-12">
-            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <div class="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
               <span class="text-2xl">{{ column.iconoVacio }}</span>
             </div>
-            <p class="text-xs text-gray-400">Arrastra tareas aquí</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">Arrastra tareas aquí</p>
           </div>
         </div>
       </div>
@@ -132,7 +132,7 @@ const columnas = ref([
   { 
     id: 'pendiente', 
     titulo: '📋 Pendientes', 
-    color: 'bg-gray-400',
+    color: 'bg-gray-400 dark:bg-gray-500',
     iconoVacio: '📋',
     permiteAgregar: true,
     tareas: []
@@ -140,7 +140,7 @@ const columnas = ref([
   { 
     id: 'en_progreso', 
     titulo: '⚙️ En Progreso', 
-    color: 'bg-blue-500',
+    color: 'bg-blue-500 dark:bg-blue-600',
     iconoVacio: '⚙️',
     permiteAgregar: false,
     tareas: []
@@ -148,7 +148,7 @@ const columnas = ref([
   { 
     id: 'revision_jefe', 
     titulo: '👔 Revisión Jefe', 
-    color: 'bg-orange-500',
+    color: 'bg-orange-500 dark:bg-orange-600',
     iconoVacio: '👔',
     permiteAgregar: false,
     tareas: []
@@ -156,7 +156,7 @@ const columnas = ref([
   { 
     id: 'revision_cliente', 
     titulo: '⭐ Revisión Cliente', 
-    color: 'bg-yellow-500',
+    color: 'bg-yellow-500 dark:bg-yellow-600',
     iconoVacio: '⭐',
     permiteAgregar: false,
     tareas: []
@@ -164,7 +164,7 @@ const columnas = ref([
   { 
     id: 'finalizada', 
     titulo: '✅ Finalizadas', 
-    color: 'bg-green-500',
+    color: 'bg-green-500 dark:bg-green-600',
     iconoVacio: '✅',
     permiteAgregar: false,
     tareas: []

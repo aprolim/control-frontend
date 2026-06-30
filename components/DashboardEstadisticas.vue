@@ -1,57 +1,57 @@
 <template>
-  <div class="dashboard-estadisticas p-6 bg-gray-50 rounded-lg">
-    <h2 class="text-2xl font-bold mb-6 text-gray-800">📊 Dashboard de Métricas</h2>
+  <div class="dashboard-estadisticas p-6 bg-gray-50 dark:bg-gray-900 rounded-lg">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-white">📊 Dashboard de Métricas</h2>
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <div class="text-sm text-gray-500">Tareas Activas</div>
-        <div class="text-2xl font-bold text-gray-800">{{ tareasActivasCount }}</div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="text-sm text-gray-500 dark:text-gray-400">Tareas Activas</div>
+        <div class="text-2xl font-bold text-gray-800 dark:text-white">{{ tareasActivasCount }}</div>
       </div>
       
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <div class="text-sm text-gray-500">Horas Trabajadas (30d)</div>
-        <div class="text-2xl font-bold text-gray-800">{{ totalHoras30d }}h</div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="text-sm text-gray-500 dark:text-gray-400">Horas Trabajadas (30d)</div>
+        <div class="text-2xl font-bold text-gray-800 dark:text-white">{{ totalHoras30d }}h</div>
       </div>
       
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <div class="text-sm text-gray-500">Eficiencia Promedio</div>
-        <div class="text-2xl font-bold text-gray-800">{{ eficienciaPromedio }}%</div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="text-sm text-gray-500 dark:text-gray-400">Eficiencia Promedio</div>
+        <div class="text-2xl font-bold text-gray-800 dark:text-white">{{ eficienciaPromedio }}%</div>
       </div>
       
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <div class="text-sm text-gray-500">Calificación Promedio</div>
-        <div class="text-2xl font-bold text-gray-800">{{ calificacionPromedio }} ★</div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="text-sm text-gray-500 dark:text-gray-400">Calificación Promedio</div>
+        <div class="text-2xl font-bold text-gray-800 dark:text-white">{{ calificacionPromedio }} ★</div>
       </div>
     </div>
     
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <h3 class="font-semibold mb-4 text-gray-800">Tareas por Estado</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h3 class="font-semibold mb-4 text-gray-800 dark:text-white">Tareas por Estado</h3>
         <canvas ref="estadoChart"></canvas>
       </div>
       
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <h3 class="font-semibold mb-4 text-gray-800">Horas Trabajadas por Día</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h3 class="font-semibold mb-4 text-gray-800 dark:text-white">Horas Trabajadas por Día</h3>
         <canvas ref="horasChart"></canvas>
       </div>
       
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <h3 class="font-semibold mb-4 text-gray-800">Productividad por Empleado</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h3 class="font-semibold mb-4 text-gray-800 dark:text-white">Productividad por Empleado</h3>
         <canvas ref="productividadChart"></canvas>
       </div>
       
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <h3 class="font-semibold mb-4 text-gray-800">Tareas Nocturnas</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h3 class="font-semibold mb-4 text-gray-800 dark:text-white">Tareas Nocturnas</h3>
         <canvas ref="nocturnasChart"></canvas>
       </div>
       
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200 lg:col-span-2">
-        <h3 class="font-semibold mb-4 text-gray-800">Velocidad del Equipo (Burndown)</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
+        <h3 class="font-semibold mb-4 text-gray-800 dark:text-white">Velocidad del Equipo (Burndown)</h3>
         <canvas ref="burndownChart"></canvas>
       </div>
       
-      <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200 lg:col-span-2">
-        <h3 class="font-semibold mb-4 text-gray-800">Heatmap de Productividad por Hora</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
+        <h3 class="font-semibold mb-4 text-gray-800 dark:text-white">Heatmap de Productividad por Hora</h3>
         <div class="grid grid-cols-24 gap-1">
           <div
             v-for="hora in 24"
@@ -61,7 +61,7 @@
             :title="`${hora - 1}:00 - ${productividadPorHora[hora - 1] || 0} registros`"
           ></div>
         </div>
-        <div class="flex justify-between mt-2 text-xs text-gray-500">
+        <div class="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
           <span>0:00</span>
           <span>6:00</span>
           <span>12:00</span>
@@ -71,12 +71,12 @@
       </div>
     </div>
     
-    <div v-if="estadisticas?.toleranciasPendientes > 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+    <div v-if="estadisticas?.toleranciasPendientes > 0" class="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
       <div class="flex items-center gap-2">
-        <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span class="font-semibold text-yellow-800">Hay {{ estadisticas.toleranciasPendientes }} tolerancias pendientes de aprobación</span>
+        <span class="font-semibold text-yellow-800 dark:text-yellow-200">Hay {{ estadisticas.toleranciasPendientes }} tolerancias pendientes de aprobación</span>
       </div>
     </div>
   </div>

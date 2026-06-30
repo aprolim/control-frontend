@@ -1,15 +1,15 @@
 <template>
   <div class="reportes-avanzados">
     <!-- Header con filtros -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
             <span class="text-white text-lg">📊</span>
           </div>
           <div>
-            <h1 class="text-xl font-bold text-gray-800">Reportes y Estadísticas</h1>
-            <p class="text-sm text-gray-500">Análisis detallado de rendimiento</p>
+            <h1 class="text-xl font-bold text-gray-800 dark:text-white">Reportes y Estadísticas</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Análisis detallado de rendimiento</p>
           </div>
         </div>
         
@@ -21,8 +21,8 @@
             :class="[
               'px-4 py-2 rounded-lg text-sm font-medium transition-all',
               periodoSeleccionado === periodo.valor
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-blue-600 text-white shadow-md dark:bg-blue-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             ]"
           >
             {{ periodo.label }}
@@ -30,27 +30,27 @@
         </div>
       </div>
       
-      <div class="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-100">
+      <div class="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-600">Desde:</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">Desde:</span>
             <input
               v-model="fechaInicio"
               type="date"
-              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-600">Hasta:</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">Hasta:</span>
             <input
               v-model="fechaFin"
               type="date"
-              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
           <button
             @click="aplicarFechasPersonalizadas"
-            class="px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition"
+            class="px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition dark:bg-green-700 dark:hover:bg-green-800"
           >
             Aplicar
           </button>
@@ -60,7 +60,7 @@
           <button
             @click="exportarExcel"
             :disabled="exportandoExcel"
-            class="px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-2 disabled:opacity-50"
+            class="px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-2 disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-800"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -70,7 +70,7 @@
           <button
             @click="exportarPDF"
             :disabled="exportandoPDF"
-            class="px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition flex items-center gap-2 disabled:opacity-50"
+            class="px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition flex items-center gap-2 disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-800"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -129,53 +129,53 @@
     </div>
     
     <!-- Tabla de datos detallados -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
           📋 Detalle de tareas
-          <span class="text-xs text-gray-500 font-normal">({{ tareasFiltradas.length }} registros)</span>
+          <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">({{ tareasFiltradas.length }} registros)</span>
         </h3>
       </div>
       <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
         <table class="w-full text-sm">
-          <thead class="bg-gray-50 sticky top-0">
+          <thead class="bg-gray-50 dark:bg-gray-900 sticky top-0">
             <tr>
-              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Título</th>
-              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Empleado</th>
-              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Estado</th>
-              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Horas</th>
-              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Progreso</th>
-              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Calificación</th>
-              <th class="px-4 py-3 text-left text-gray-600 font-semibold">Fecha</th>
+              <th class="px-4 py-3 text-left text-gray-600 dark:text-gray-400 font-semibold">Título</th>
+              <th class="px-4 py-3 text-left text-gray-600 dark:text-gray-400 font-semibold">Empleado</th>
+              <th class="px-4 py-3 text-left text-gray-600 dark:text-gray-400 font-semibold">Estado</th>
+              <th class="px-4 py-3 text-left text-gray-600 dark:text-gray-400 font-semibold">Horas</th>
+              <th class="px-4 py-3 text-left text-gray-600 dark:text-gray-400 font-semibold">Progreso</th>
+              <th class="px-4 py-3 text-left text-gray-600 dark:text-gray-400 font-semibold">Calificación</th>
+              <th class="px-4 py-3 text-left text-gray-600 dark:text-gray-400 font-semibold">Fecha</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="tarea in tareasFiltradas" :key="tarea._id" class="border-t border-gray-100 hover:bg-gray-50 transition">
-              <td class="px-4 py-3 text-gray-800">{{ tarea.titulo }}</td>
-              <td class="px-4 py-3 text-gray-600">{{ tarea.asignadoA?.nombre || 'Sin asignar' }}</td>
+            <tr v-for="tarea in tareasFiltradas" :key="tarea._id" class="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+              <td class="px-4 py-3 text-gray-800 dark:text-gray-200">{{ tarea.titulo }}</td>
+              <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ tarea.asignadoA?.nombre || 'Sin asignar' }}</td>
               <td class="px-4 py-3">
                 <span :class="estadoColorClass(tarea.estado)" class="px-2 py-1 rounded-full text-xs font-medium">
                   {{ estadoTextoLabel(tarea.estado) }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-gray-600 font-mono">{{ formatHoras(tarea) }}</td>
+              <td class="px-4 py-3 text-gray-600 dark:text-gray-400 font-mono">{{ formatHoras(tarea) }}</td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
-                  <div class="w-16 bg-gray-200 rounded-full h-1.5">
+                  <div class="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                     <div class="bg-blue-500 rounded-full h-1.5" :style="{ width: `${tarea.porcentajeCompletado || 0}%` }"></div>
                   </div>
-                  <span class="text-xs text-gray-500">{{ tarea.porcentajeCompletado || 0 }}%</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ tarea.porcentajeCompletado || 0 }}%</span>
                 </div>
               </td>
               <td class="px-4 py-3">
                 <span v-if="tarea.calificacion?.puntaje" class="flex items-center gap-1">
                   <span class="text-yellow-500">★</span>
-                  <span class="font-medium">{{ tarea.calificacion.puntaje }}/5</span>
+                  <span class="font-medium text-gray-800 dark:text-gray-200">{{ tarea.calificacion.puntaje }}/5</span>
                 </span>
-                <span v-else-if="tarea.calificacion?.autoFinalizada" class="text-xs text-orange-500">Auto-finalizada</span>
-                <span v-else class="text-gray-400">—</span>
+                <span v-else-if="tarea.calificacion?.autoFinalizada" class="text-xs text-orange-500 dark:text-orange-400">Auto-finalizada</span>
+                <span v-else class="text-gray-400 dark:text-gray-500">—</span>
               </td>
-              <td class="px-4 py-3 text-gray-500 text-xs">{{ formatFecha(tarea.createdAt) }}</td>
+              <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ formatFecha(tarea.createdAt) }}</td>
             </tr>
           </tbody>
         </table>
@@ -237,29 +237,24 @@ let charts = {};
 const calcularMinutosReales = (tarea) => {
   let totalMinutos = 0;
   
-  // 1. Usar tiempoAcumulado
   if (tarea.tiempoAcumulado && tarea.tiempoAcumulado > 0) {
     totalMinutos = tarea.tiempoAcumulado;
   }
   
-  // 2. Usar horasTotalesReales
   if (totalMinutos === 0 && (tarea.horasTotalesReales || tarea.minutosTotalesReales)) {
     totalMinutos = (tarea.horasTotalesReales || 0) * 60 + (tarea.minutosTotalesReales || 0);
   }
   
-  // 3. Sumar registroHoras
   if (totalMinutos === 0 && tarea.registroHoras?.length) {
     totalMinutos = tarea.registroHoras.reduce((sum, reg) => {
       return sum + (reg.horasTrabajadas * 60) + (reg.minutosTrabajados || 0);
     }, 0);
   }
   
-  // 4. Calcular por porcentaje vs tiempo estimado
   if (totalMinutos === 0 && tarea.tiempoEstimadoEmpleado > 0 && tarea.porcentajeCompletado > 0) {
     totalMinutos = Math.round((tarea.tiempoEstimadoEmpleado * tarea.porcentajeCompletado) / 100);
   }
   
-  // 5. Si está completada (100%) y tiene tiempo estimado
   if (totalMinutos === 0 && tarea.tiempoEstimadoEmpleado > 0 && tarea.estado === 'finalizada') {
     totalMinutos = tarea.tiempoEstimadoEmpleado;
   }
@@ -295,13 +290,13 @@ const formatFechaHora = (fecha) => {
 
 const estadoColorClass = (estado) => {
   const map = {
-    pendiente: 'bg-gray-100 text-gray-700',
-    en_progreso: 'bg-blue-100 text-blue-700',
-    revision_jefe: 'bg-orange-100 text-orange-700',
-    revision_cliente: 'bg-yellow-100 text-yellow-700',
-    finalizada: 'bg-green-100 text-green-700'
+    pendiente: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+    en_progreso: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+    revision_jefe: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
+    revision_cliente: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
+    finalizada: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
   };
-  return map[estado] || 'bg-gray-100 text-gray-700';
+  return map[estado] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
 };
 
 const estadoTextoLabel = (estado) => {
@@ -315,7 +310,6 @@ const estadoTextoLabel = (estado) => {
   return map[estado] || estado;
 };
 
-// Calcular rango de fechas según período
 const calcularRangoFechas = () => {
   const ahora = new Date();
   let inicio = new Date();
@@ -363,7 +357,6 @@ const aplicarFechasPersonalizadas = () => {
   filtrarTareas();
 };
 
-// Filtrar tareas por fechas
 const filtrarTareas = () => {
   if (!tarjetasStore.tarjetas.length) return;
   
@@ -380,23 +373,19 @@ const filtrarTareas = () => {
   renderizarGraficos();
 };
 
-// Calcular resumen de métricas
 const calcularResumen = () => {
   const totalTareas = tareasFiltradas.value.length;
   
-  // Incluir tareas en estado 'finalizada' y 'revision_cliente'
   const completadas = tareasFiltradas.value.filter(t => 
     t.estado === 'finalizada' || t.estado === 'revision_cliente'
   );
   const tareasCompletadasCount = completadas.length;
   
-  // Calcular horas totales
   let totalHorasNum = 0;
   tareasFiltradas.value.forEach(tarea => {
     totalHorasNum += parseFloat(formatHorasDecimal(tarea));
   });
   
-  // Calcular eficiencia
   let eficiencia = 0;
   let mensajeEficiencia = '';
   if (totalTareas > 0) {
@@ -409,14 +398,12 @@ const calcularResumen = () => {
     mensajeEficiencia = 'Sin datos';
   }
   
-  // Calificaciones
   const calificadas = completadas.filter(t => t.calificacion?.puntaje);
   let calificacionPromedioNum = 0;
   if (calificadas.length > 0) {
     calificacionPromedioNum = calificadas.reduce((sum, t) => sum + t.calificacion.puntaje, 0) / calificadas.length;
   }
   
-  // Días en rango
   const diasEnRango = Math.max(1, Math.ceil((new Date(fechaFin.value) - new Date(fechaInicio.value)) / (1000 * 60 * 60 * 24)));
   
   resumen.value = {
@@ -432,7 +419,6 @@ const calcularResumen = () => {
   };
 };
 
-// Renderizar gráficos
 const renderizarGraficos = () => {
   const tareasPorFecha = {};
   const horasPorFecha = {};
@@ -445,7 +431,6 @@ const renderizarGraficos = () => {
   
   const fechas = Object.keys(tareasPorFecha).sort();
   
-  // Destruir gráficos existentes
   Object.values(charts).forEach(chart => {
     if (chart) chart.destroy();
   });
@@ -526,9 +511,6 @@ const renderizarGraficos = () => {
   }
 };
 
-// ============================================================
-// EXPORTAR A EXCEL
-// ============================================================
 const exportarExcel = async () => {
   exportandoExcel.value = true;
   try {
@@ -580,9 +562,6 @@ const exportarExcel = async () => {
   }
 };
 
-// ============================================================
-// EXPORTAR A PDF
-// ============================================================
 const exportarPDF = async () => {
   exportandoPDF.value = true;
   try {
@@ -595,7 +574,6 @@ const exportarPDF = async () => {
     const pageWidth = pdf.internal.pageSize.getWidth();
     let currentPage = 1;
     
-    // Título
     pdf.setFillColor(59, 130, 246);
     pdf.rect(0, 0, pageWidth, 35, 'F');
     pdf.setTextColor(255, 255, 255);
@@ -609,7 +587,6 @@ const exportarPDF = async () => {
     pdf.setTextColor(0, 0, 0);
     let yPosition = 45;
     
-    // Información
     pdf.setFillColor(249, 250, 251);
     pdf.rect(15, yPosition - 5, pageWidth - 30, 25, 'F');
     pdf.setFontSize(9);
@@ -618,7 +595,6 @@ const exportarPDF = async () => {
     pdf.text(`Total tareas: ${tareasFiltradas.value.length}`, 20, yPosition + 12);
     yPosition += 28;
     
-    // Tarjetas de métricas
     const cardWidth = (pageWidth - 40) / 4;
     const cardX = [15, 15 + cardWidth + 5, 15 + (cardWidth + 5) * 2, 15 + (cardWidth + 5) * 3];
     
@@ -646,7 +622,6 @@ const exportarPDF = async () => {
     yPosition += 42;
     pdf.setTextColor(0, 0, 0);
     
-    // Tabla
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.text('Detalle de Tareas', 15, yPosition);
@@ -705,7 +680,6 @@ const exportarPDF = async () => {
   }
 };
 
-// Watchers
 watch(periodoSeleccionado, () => {
   calcularRangoFechas();
   filtrarTareas();
@@ -717,7 +691,6 @@ watch(() => tarjetasStore.tarjetas, () => {
   }
 }, { deep: true });
 
-// Lifecycle
 onMounted(() => {
   calcularRangoFechas();
   if (tarjetasStore.tarjetas.length) {

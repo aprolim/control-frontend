@@ -4,11 +4,11 @@
       <div
         v-for="(column, columnName) in tarjetasPorEstado"
         :key="columnName"
-        class="kanban-column min-w-[320px] bg-gray-50 rounded-lg p-4 shadow-sm border border-gray-200"
+        class="kanban-column min-w-[320px] bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700"
       >
         <div class="flex justify-between items-center mb-4">
-          <h3 class="font-bold text-lg text-gray-800">{{ columnName }}</h3>
-          <span class="bg-gray-200 px-2 py-1 rounded-full text-sm text-gray-700">
+          <h3 class="font-bold text-lg text-gray-800 dark:text-white">{{ columnName }}</h3>
+          <span class="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full text-sm text-gray-700 dark:text-gray-300">
             {{ column.length }}
           </span>
         </div>
@@ -30,7 +30,7 @@
         
         <button
           @click="abrirModalTareaRapida"
-          class="mt-4 w-full py-2 text-gray-500 hover:text-gray-700 border-2 border-dashed border-gray-300 rounded-lg transition"
+          class="mt-4 w-full py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg transition"
         >
           + Agregar tarea
         </button>

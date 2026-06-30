@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class', // ✅ AGREGAR esta línea
+  
   content: [
     "./components/**/*.{js,vue,ts}",
     "./layouts/**/*.vue",
@@ -7,7 +9,6 @@ export default {
     "./plugins/**/*.{js,ts}",
     "./app.vue",
   ],
-  // Eliminar darkMode: 'class'
   theme: {
     extend: {
       colors: {

@@ -1,35 +1,35 @@
 <template>
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
-      <div class="flex justify-between items-center p-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-800">{{ extra ? 'Crear Tarea Extra' : 'Nueva Solicitud' }}</h3>
-        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">✕</button>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+      <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">{{ extra ? 'Crear Tarea Extra' : 'Nueva Solicitud' }}</h3>
+        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
       </div>
       
       <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Título *</label>
           <input
             v-model="form.titulo"
             type="text"
             required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none dark:bg-gray-700 dark:text-white"
             :placeholder="extra ? 'Ej: Revisar documentación' : 'Ej: Reparación de computadora'"
           />
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
           <textarea
             v-model="form.descripcion"
             rows="3"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none dark:bg-gray-700 dark:text-white"
             :placeholder="extra ? 'Describa la tarea a realizar...' : 'Describa detalladamente el servicio que necesita...'"
           ></textarea>
         </div>
         
         <div v-if="extra">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tiempo estimado (para tu planificación)</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tiempo estimado (para tu planificación)</label>
           <div class="flex gap-2">
             <div class="flex-1">
               <input
@@ -37,10 +37,10 @@
                 type="number"
                 step="0.5"
                 min="0"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Horas"
               />
-              <p class="text-xs text-gray-400 mt-1">Horas</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Horas</p>
             </div>
             <div class="flex-1">
               <input
@@ -49,27 +49,27 @@
                 step="5"
                 min="0"
                 max="55"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Minutos"
               />
-              <p class="text-xs text-gray-400 mt-1">Minutos</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Minutos</p>
             </div>
           </div>
-          <p class="text-xs text-gray-500 mt-2">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
             📊 Tiempo total estimado: {{ tiempoEstimadoFormateado }}
           </p>
         </div>
         
-        <div v-else class="bg-gray-50 p-3 rounded-lg border border-gray-200">
-          <p class="text-sm text-gray-600">
+        <div v-else class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
             ⏱️ El tiempo de la tarea será estimado por el empleado asignado.
           </p>
         </div>
         
-        <div v-if="!extra && !authStore.isAuthenticated" class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+        <div v-if="!extra && !authStore.isAuthenticated" class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="form.logueado" class="rounded text-primary-600" />
-            <span class="text-sm text-gray-700">Solicitar como usuario registrado (obtén prioridad alta)</span>
+            <input type="checkbox" v-model="form.logueado" class="rounded text-primary-600 dark:text-primary-400" />
+            <span class="text-sm text-gray-700 dark:text-gray-300">Solicitar como usuario registrado (obtén prioridad alta)</span>
           </label>
         </div>
         
@@ -77,24 +77,24 @@
           <input
             v-model="form.nombre"
             placeholder="Nombre completo"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
           />
           <input
             v-model="form.email"
             type="email"
             placeholder="Correo electrónico"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
           />
           <input
             v-model="form.telefono"
             placeholder="Teléfono"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
           />
-          <p class="text-xs text-gray-500">✨ Regístrate después para ver el estado de tu solicitud</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">✨ Regístrate después para ver el estado de tu solicitud</p>
         </div>
         
-        <div v-if="extra" class="bg-green-50 p-3 rounded-lg border border-green-200">
-          <p class="text-sm text-green-700">
+        <div v-if="extra" class="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+          <p class="text-sm text-green-700 dark:text-green-300">
             ✅ La tarea se creará automáticamente asignada a ti y pasará a "En Progreso".
           </p>
         </div>
@@ -102,7 +102,7 @@
         <button
           type="submit"
           :disabled="loading"
-          class="w-full bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition"
+          class="w-full bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition dark:bg-primary-700 dark:hover:bg-primary-800"
         >
           {{ loading ? 'Creando...' : (extra ? 'Crear Tarea' : 'Enviar Solicitud') }}
         </button>
@@ -181,12 +181,9 @@ const handleSubmit = async () => {
       alert('✅ Solicitud enviada exitosamente.');
     }
     
-    // ✅ CERRAR MODAL DESPUÉS DE CREAR
     emit('close');
-    // ✅ NOTIFICAR AL PADRE QUE SE CREÓ
     emit('created');
     
-    // Limpiar formulario para la próxima vez
     form.value = {
       titulo: '',
       descripcion: '',

@@ -1,21 +1,21 @@
 <template>
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
-      <div class="flex justify-between items-center p-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-800">Registrar progreso</h3>
-        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">✕</button>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+      <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Registrar progreso</h3>
+        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
       </div>
       
       <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">{{ tarjeta.titulo }}</label>
-          <p class="text-xs text-gray-500">Progreso actual: {{ tarjeta.porcentajeCompletado }}%</p>
-          <p class="text-xs text-gray-500">Tiempo estimado: {{ tiempoEstimadoTexto(tarjeta) }}</p>
-          <p class="text-xs text-gray-500">Tiempo trabajado: {{ tiempoRealTexto(tarjeta) }}</p>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ tarjeta.titulo }}</label>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Progreso actual: {{ tarjeta.porcentajeCompletado }}%</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Tiempo estimado: {{ tiempoEstimadoTexto(tarjeta) }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Tiempo trabajado: {{ tiempoRealTexto(tarjeta) }}</p>
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tiempo trabajado hoy *</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tiempo trabajado hoy *</label>
           <div class="flex gap-2">
             <div class="flex-1">
               <input
@@ -23,10 +23,10 @@
                 type="number"
                 step="0.5"
                 min="0"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Horas"
               />
-              <p class="text-xs text-gray-400 mt-1">Horas</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Horas</p>
             </div>
             <div class="flex-1">
               <input
@@ -35,17 +35,17 @@
                 step="5"
                 min="0"
                 max="55"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Minutos"
               />
-              <p class="text-xs text-gray-400 mt-1">Minutos</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Minutos</p>
             </div>
           </div>
-          <p class="text-xs text-gray-500 mt-1">Total hoy: {{ tiempoHoyFormateado }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total hoy: {{ tiempoHoyFormateado }}</p>
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Nuevo porcentaje completado *</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nuevo porcentaje completado *</label>
           <input
             v-model.number="form.porcentajeAvance"
             type="range"
@@ -54,28 +54,28 @@
             step="5"
             class="w-full"
           />
-          <div class="text-center text-sm font-bold mt-1 text-blue-600">{{ form.porcentajeAvance }}%</div>
+          <div class="text-center text-sm font-bold mt-1 text-blue-600 dark:text-blue-400">{{ form.porcentajeAvance }}%</div>
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Comentario</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Comentario</label>
           <textarea
             v-model="form.comentario"
             rows="2"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
             placeholder="¿Qué avanzaste?"
           ></textarea>
         </div>
         
         <div class="space-y-2">
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="form.cruzoMedianoche" class="rounded text-blue-600" />
-            <span class="text-sm text-gray-700">Trabajé hasta después de medianoche</span>
+            <input type="checkbox" v-model="form.cruzoMedianoche" class="rounded text-blue-600 dark:text-blue-400" />
+            <span class="text-sm text-gray-700 dark:text-gray-300">Trabajé hasta después de medianoche</span>
           </label>
           
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="form.esHoraExtra" class="rounded text-blue-600" />
-            <span class="text-sm text-gray-700">Estas horas son extras (requiere aprobación)</span>
+            <input type="checkbox" v-model="form.esHoraExtra" class="rounded text-blue-600 dark:text-blue-400" />
+            <span class="text-sm text-gray-700 dark:text-gray-300">Estas horas son extras (requiere aprobación)</span>
           </label>
         </div>
         
@@ -83,19 +83,19 @@
           <input
             v-model="form.inicioTrabajo"
             type="datetime-local"
-            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
           />
           <input
             v-model="form.finTrabajo"
             type="datetime-local"
-            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
           />
         </div>
         
         <button
           type="submit"
           :disabled="loading"
-          class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+          class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition dark:bg-blue-700 dark:hover:bg-blue-800"
         >
           {{ loading ? 'Guardando...' : 'Registrar avance' }}
         </button>
