@@ -9,6 +9,9 @@
       </div>
       <div class="text-sm text-gray-500 dark:text-gray-400">
         <span class="font-medium">Total:</span> {{ usuarios.length }}
+        <span v-if="usuariosCambiados.length > 0" class="ml-3 text-yellow-500">
+          ⚡ {{ usuariosCambiados.length }} cambio(s) pendiente(s)
+        </span>
       </div>
     </div>
 
@@ -41,6 +44,14 @@
                     {{ user.nombre?.charAt(0) || '?' }}
                   </div>
                   <span class="text-sm font-medium text-gray-800 dark:text-white">{{ user.nombre }}</span>
+                  <!-- 🔥 Indicador de cambio de rol -->
+                  <span v-if="user.cambiandoRol" class="text-xs text-yellow-500 animate-pulse flex items-center gap-1">
+                    <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                    Cambiando...
+                  </span>
+                  <span v-if="user.rolActualizado" class="text-xs text-green-500 flex items-center gap-1">
+                    ✅ Actualizado
+                  </span>
                 </div>
               </td>
               <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{{ user.email }}</td>
@@ -52,22 +63,24 @@
               <td class="px-4 py-3">
                 <select 
                   v-model="user.nuevoRol" 
-                  :disabled="user._id === authStore.user?._id"
+                  :disabled="user._id === authStore.user?._id || user.cambiandoRol"
                   class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="cliente">Cliente</option>
-                  <option value="empleado">Empleado</option>
-                  <option value="jefe">Jefe</option>
+                  <option value="usuario">Usuario</option>
+                  <option value="tecnico">Técnico</option>
+                  <option value="supervisor">Supervisor</option>
                 </select>
                 <p v-if="user._id === authStore.user?._id" class="text-xs text-gray-400 mt-1">(Tu propio rol)</p>
               </td>
               <td class="px-4 py-3">
                 <button
                   @click="actualizarRol(user)"
-                  :disabled="user.rol === user.nuevoRol || actualizando === user._id || user._id === authStore.user?._id"
-                  class="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1"
+                  :disabled="user.rol === user.nuevoRol || actualizando === user._id || user._id === authStore.user?._id || user.cambiandoRol"
+                  class="px-4 py-1.5 text-sm rounded-lg transition flex items-center gap-1"
+                  :class="user.rol === user.nuevoRol ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500' : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'"
                 >
                   <span v-if="actualizando === user._id" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span v-else-if="user.rol === user.nuevoRol">✅</span>
                   {{ actualizando === user._id ? 'Guardando...' : 'Actualizar' }}
                 </button>
               </td>
@@ -97,15 +110,15 @@
       <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">📋 Leyenda de roles</h3>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
         <div class="flex items-center gap-2">
-          <span class="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">Jefe</span>
+          <span class="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">Supervisor</span>
           <span class="text-gray-600 dark:text-gray-400">Puede asignar roles y ver todo</span>
         </div>
         <div class="flex items-center gap-2">
-          <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">Empleado</span>
+          <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">Técnico</span>
           <span class="text-gray-600 dark:text-gray-400">Puede tomar y trabajar tareas</span>
         </div>
         <div class="flex items-center gap-2">
-          <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Cliente</span>
+          <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Usuario</span>
           <span class="text-gray-600 dark:text-gray-400">Puede solicitar y calificar servicios</span>
         </div>
       </div>
@@ -114,15 +127,27 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useAuthStore } from '~/stores/auth';
+import { useRoles } from '~/composables/useRoles';
 
 definePageMeta({
   middleware: 'auth'
 });
 
+console.log('========================================');
+console.log('👥 [Empleados] Página cargada');
+console.log('========================================');
+
 const authStore = useAuthStore();
+const { isSupervisor, canManageUsers } = useRoles();
 const config = useRuntimeConfig();
+
+// Verificar permisos
+if (!isSupervisor.value || !canManageUsers.value) {
+  console.warn('⚠️ [Empleados] No autorizado, redirigiendo...');
+  navigateTo('/');
+}
 
 const usuarios = ref([]);
 const cargando = ref(false);
@@ -130,16 +155,26 @@ const actualizando = ref(null);
 const mensaje = ref('');
 const mensajeError = ref(false);
 
+// Variables para Socket
+const socket = ref(null);
+let pollingInterval = null;
+
+// 🔥 Computed para usuarios cambiados recientemente
+const usuariosCambiados = computed(() => {
+  return usuarios.value.filter(u => u.rolActualizado);
+});
+
 const rolBadgeClass = (rol) => {
   const map = {
-    jefe: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
-    empleado: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-    cliente: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+    supervisor: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+    tecnico: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+    usuario: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
   };
   return map[rol] || 'bg-gray-100 text-gray-700';
 };
 
 const cargarUsuarios = async () => {
+  console.log('🔄 [Empleados] Cargando usuarios...');
   cargando.value = true;
   try {
     const token = localStorage.getItem('token');
@@ -147,14 +182,23 @@ const cargarUsuarios = async () => {
     const response = await $fetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    usuarios.value = response.map(u => ({
-      ...u,
-      nuevoRol: u.rol
-    }));
+    console.log(`✅ [Empleados] ${response.length} usuarios cargados`);
+    
+    // Mantener el estado de cambiandoRol y rolActualizado
+    const oldUsuarios = usuarios.value;
+    usuarios.value = response.map(u => {
+      const oldUser = oldUsuarios.find(old => old._id === u._id);
+      return {
+        ...u,
+        nuevoRol: u.rol,
+        cambiandoRol: oldUser?.cambiandoRol || false,
+        rolActualizado: oldUser?.rolActualizado || false
+      };
+    });
   } catch (error) {
-    console.error('Error cargando usuarios:', error);
+    console.error('❌ [Empleados] Error cargando usuarios:', error);
     if (error.status === 403) {
-      mensaje.value = '❌ No tienes permisos para ver esta página. Solo los jefes pueden acceder.';
+      mensaje.value = '❌ No tienes permisos para ver esta página. Solo los supervisores pueden acceder.';
     } else {
       mensaje.value = '❌ Error al cargar usuarios';
     }
@@ -172,7 +216,11 @@ const actualizarRol = async (user) => {
     return;
   }
   
+  console.log(`👤 [Empleados] Actualizando rol de ${user.nombre}: ${user.rol} → ${user.nuevoRol}`);
+  
   actualizando.value = user._id;
+  user.cambiandoRol = true;
+  user.rolActualizado = false;
   mensaje.value = '';
   mensajeError.value = false;
   
@@ -186,29 +234,111 @@ const actualizarRol = async (user) => {
     });
     
     if (response.success) {
-      user.rol = user.nuevoRol;
-      mensaje.value = `✅ Rol de ${user.nombre} actualizado a ${user.rol}`;
+      const rolAnterior = user.rol;
+      const rolNuevo = user.nuevoRol;
+      
+      user.rol = rolNuevo;
+      user.cambiandoRol = false;
+      user.rolActualizado = true;
+      
+      mensaje.value = `✅ Rol de ${user.nombre} actualizado de "${rolAnterior}" a "${rolNuevo}"`;
       mensajeError.value = false;
       
-      // Si el rol actualizado es del usuario logueado, actualizar store
+      console.log(`✅ [Empleados] Rol cambiado: ${user.nombre} (${rolAnterior} → ${rolNuevo})`);
+      console.log(`📤 [Empleados] Evento Socket emitido al usuario`);
+      
+      // Si es el usuario actual, actualizar también el store
       if (user._id === authStore.user?._id) {
-        authStore.user.rol = user.rol;
+        authStore.user.rol = rolNuevo;
         localStorage.setItem('user', JSON.stringify(authStore.user));
       }
+      
+      // Mostrar notificación de éxito
+      alert(`✅ Rol de ${user.nombre} actualizado a ${rolNuevo}`);
+      
+      // Limpiar el estado de "actualizado" después de 5 segundos
+      setTimeout(() => {
+        user.rolActualizado = false;
+      }, 5000);
+      
+      // Recargar la lista de usuarios para actualizar la vista
+      setTimeout(async () => {
+        await cargarUsuarios();
+      }, 500);
     }
   } catch (error) {
-    console.error('Error actualizando rol:', error);
+    console.error('❌ [Empleados] Error actualizando rol:', error);
     mensaje.value = error.data?.error || '❌ Error al actualizar rol';
     mensajeError.value = true;
-    // Revertir selección
     user.nuevoRol = user.rol;
+    user.cambiandoRol = false;
+    user.rolActualizado = false;
   } finally {
     actualizando.value = null;
   }
 };
 
+// ============================================================
+// CONFIGURAR SOCKETS
+// ============================================================
+
+const configurarSockets = () => {
+  const nuxtApp = useNuxtApp();
+  socket.value = nuxtApp.$socket;
+  
+  if (!socket.value) {
+    console.warn('⚠️ [Empleados] Socket no disponible');
+    return;
+  }
+  
+  console.log('✅ [Empleados] Socket disponible');
+  
+  // 🔥 Escuchar evento de rol actualizado
+  socket.value.on('rol-actualizado', (data) => {
+    console.log('========================================');
+    console.log('🔄 [Empleados][SOCKET] 📢 ROL ACTUALIZADO!');
+    console.log(`   👤 Usuario ID: ${data.userId}`);
+    console.log(`   🆕 Nuevo rol: ${data.nuevoRol}`);
+    console.log(`   📝 Mensaje: ${data.mensaje}`);
+    console.log('========================================');
+    
+    // Recargar la lista de usuarios
+    cargarUsuarios();
+    
+    // Mostrar notificación en la página
+    const user = usuarios.value.find(u => u._id === data.userId);
+    if (user) {
+      mensaje.value = `✅ ${user.nombre} actualizado a ${data.nuevoRol}`;
+      mensajeError.value = false;
+      user.rolActualizado = true;
+      setTimeout(() => {
+        user.rolActualizado = false;
+      }, 5000);
+    }
+  });
+};
+
+// ============================================================
+// LIFECYCLE
+// ============================================================
+
 onMounted(() => {
+  console.log('✅ [Empleados] Montado');
   cargarUsuarios();
+  configurarSockets();
+  
+  // Polling cada 15 segundos para mantener la lista actualizada
+  pollingInterval = setInterval(() => {
+    cargarUsuarios();
+  }, 15000);
+});
+
+onUnmounted(() => {
+  console.log('🛑 [Empleados] Desmontando');
+  if (pollingInterval) clearInterval(pollingInterval);
+  if (socket.value) {
+    socket.value.off('rol-actualizado');
+  }
 });
 </script>
 
@@ -218,5 +348,13 @@ onMounted(() => {
 }
 .animate-spin {
   animation: spin 0.6s linear infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>

@@ -33,11 +33,11 @@
           <div class="flex gap-4">
             <label class="flex items-center gap-2">
               <input type="radio" v-model="configuracion.revisarColumna" value="revision_cliente" class="text-blue-600 dark:text-blue-400">
-              <span class="text-gray-700 dark:text-gray-300">Solo Revisión Cliente</span>
+              <span class="text-gray-700 dark:text-gray-300">Solo Revisión Usuario</span>
             </label>
             <label class="flex items-center gap-2">
               <input type="radio" v-model="configuracion.revisarColumna" value="revision_jefe" class="text-blue-600 dark:text-blue-400">
-              <span class="text-gray-700 dark:text-gray-300">Solo Revisión Jefe</span>
+              <span class="text-gray-700 dark:text-gray-300">Solo Revisión Supervisor</span>
             </label>
             <label class="flex items-center gap-2">
               <input type="radio" v-model="configuracion.revisarColumna" value="ambas" class="text-blue-600 dark:text-blue-400">
@@ -47,10 +47,10 @@
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <!-- Días máximos cliente -->
+          <!-- Días máximos usuario -->
           <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              👥 Días máximos para Cliente
+              👥 Días máximos para Usuario
             </label>
             <div class="flex items-center gap-3">
               <input
@@ -63,13 +63,13 @@
               />
               <span class="text-gray-600 dark:text-gray-400">días</span>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Tiempo que tiene el cliente para calificar</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Tiempo que tiene el usuario para calificar</p>
           </div>
           
-          <!-- Días máximos jefe -->
+          <!-- Días máximos supervisor -->
           <div class="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-4">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              👔 Días máximos para Jefe
+              👔 Días máximos para Supervisor
             </label>
             <div class="flex items-center gap-3">
               <input
@@ -82,7 +82,7 @@
               />
               <span class="text-gray-600 dark:text-gray-400">días</span>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Tiempo que tiene el jefe para aprobar</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Tiempo que tiene el supervisor para aprobar</p>
           </div>
         </div>
         
@@ -96,7 +96,7 @@
               @change="guardarConfiguracion"
             >
               <option value="finalizar">✅ Finalizar tarea automáticamente</option>
-              <option value="notificar_jefe">📢 Notificar al jefe</option>
+              <option value="notificar_jefe">📢 Notificar al supervisor</option>
               <option value="escalar">🔄 Reabrir y reasignar</option>
               <option value="reabrir">🔁 Reabrir la tarea</option>
             </select>
@@ -119,25 +119,25 @@
               />
               <span class="text-gray-600 dark:text-gray-400">días antes</span>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enviar recordatorio al cliente y empleado</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enviar recordatorio al usuario y técnico</p>
           </div>
         </div>
         
-        <!-- Excepciones de empleados -->
+        <!-- Excepciones de técnicos -->
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">👥 Empleados excluidos</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">👥 Técnicos excluidos</label>
           <select
-            v-model="empleadoSeleccionado"
+            v-model="tecnicoSeleccionado"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white mb-2"
           >
-            <option value="">-- Seleccionar empleado --</option>
-            <option v-for="emp in empleados" :key="emp._id" :value="emp._id">
-              {{ emp.nombre }} - {{ emp.email }}
+            <option value="">-- Seleccionar técnico --</option>
+            <option v-for="tec in tecnicos" :key="tec._id" :value="tec._id">
+              {{ tec.nombre }} - {{ tec.email }}
             </option>
           </select>
           <button
             @click="agregarExcepcion"
-            :disabled="!empleadoSeleccionado"
+            :disabled="!tecnicoSeleccionado"
             class="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition mb-3"
           >
             + Agregar excepción
@@ -145,15 +145,15 @@
           
           <div class="flex flex-wrap gap-2">
             <div
-              v-for="empId in configuracion.excepcionesEmpleados"
-              :key="empId"
+              v-for="tecId in configuracion.excepcionesEmpleados"
+              :key="tecId"
               class="bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1 text-sm flex items-center gap-2"
             >
-              <span class="text-gray-700 dark:text-gray-300">{{ getEmpleadoNombre(empId) }}</span>
-              <button @click="removerExcepcion(empId)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">✕</button>
+              <span class="text-gray-700 dark:text-gray-300">{{ getTecnicoNombre(tecId) }}</span>
+              <button @click="removerExcepcion(tecId)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">✕</button>
             </div>
           </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Los empleados excluidos no serán afectados por el auto-cierre</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Los técnicos excluidos no serán afectados por el auto-cierre</p>
         </div>
         
         <!-- Resumen de configuración -->
@@ -166,16 +166,16 @@
             </div>
             <div class="text-gray-600 dark:text-gray-400">Columnas revisadas:</div>
             <div class="text-gray-800 dark:text-gray-200">{{ textoColumna }}</div>
-            <div class="text-gray-600 dark:text-gray-400">Tiempo cliente:</div>
+            <div class="text-gray-600 dark:text-gray-400">Tiempo usuario:</div>
             <div class="text-gray-800 dark:text-gray-200">{{ configuracion.diasMaximosCliente }} días</div>
-            <div class="text-gray-600 dark:text-gray-400">Tiempo jefe:</div>
+            <div class="text-gray-600 dark:text-gray-400">Tiempo supervisor:</div>
             <div class="text-gray-800 dark:text-gray-200">{{ configuracion.diasMaximosJefe }} días</div>
             <div class="text-gray-600 dark:text-gray-400">Acción:</div>
             <div class="text-gray-800 dark:text-gray-200">{{ textoAccion }}</div>
             <div class="text-gray-600 dark:text-gray-400">Notificación:</div>
             <div class="text-gray-800 dark:text-gray-200">{{ configuracion.notificarAntesDias === 0 ? 'No notificar' : configuracion.notificarAntesDias + ' días antes' }}</div>
             <div class="text-gray-600 dark:text-gray-400">Excluidos:</div>
-            <div class="text-gray-800 dark:text-gray-200">{{ configuracion.excepcionesEmpleados?.length || 0 }} empleados</div>
+            <div class="text-gray-800 dark:text-gray-200">{{ configuracion.excepcionesEmpleados?.length || 0 }} técnicos</div>
           </div>
         </div>
         
@@ -204,13 +204,13 @@
           </div>
           <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 text-center">
             <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ estadisticas.clientesSinRevisar || 0 }}</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Clientes sin revisión</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Usuarios sin revisión</p>
             <p class="text-xs text-gray-400 dark:text-gray-500">Tareas pendientes</p>
           </div>
           <div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-4 text-center">
             <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ configuracion.diasMaximosCliente || 5 }}</p>
             <p class="text-sm text-gray-600 dark:text-gray-400">Días configurados</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500">Para revisión de cliente</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">Para revisión de usuario</p>
           </div>
         </div>
       </div>
@@ -224,8 +224,8 @@ import { useRuntimeConfig } from '#app';
 
 const config = useRuntimeConfig();
 const guardando = ref(false);
-const empleadoSeleccionado = ref('');
-const empleados = ref([]);
+const tecnicoSeleccionado = ref('');
+const tecnicos = ref([]);
 
 const configuracion = ref({
   revisarColumna: 'revision_cliente',
@@ -244,8 +244,8 @@ const estadisticas = ref({
 
 const textoColumna = computed(() => {
   const mapa = {
-    revision_cliente: 'Solo Revisión Cliente',
-    revision_jefe: 'Solo Revisión Jefe',
+    revision_cliente: 'Solo Revisión Usuario',
+    revision_jefe: 'Solo Revisión Supervisor',
     ambas: 'Ambas columnas'
   };
   return mapa[configuracion.value.revisarColumna] || 'No definido';
@@ -254,7 +254,7 @@ const textoColumna = computed(() => {
 const textoAccion = computed(() => {
   const mapa = {
     finalizar: 'Finalizar tarea automáticamente',
-    notificar_jefe: 'Notificar al jefe',
+    notificar_jefe: 'Notificar al supervisor',
     escalar: 'Reabrir y reasignar',
     reabrir: 'Reabrir la tarea'
   };
@@ -269,7 +269,7 @@ const cargarConfiguracion = async () => {
     });
     
     configuracion.value = response.configuracion;
-    empleados.value = response.empleados;
+    tecnicos.value = response.empleados;
   } catch (error) {
     console.error('Error cargando configuración:', error);
   }
@@ -308,21 +308,21 @@ const guardarConfiguracion = async () => {
 };
 
 const agregarExcepcion = () => {
-  if (empleadoSeleccionado.value && !configuracion.value.excepcionesEmpleados.includes(empleadoSeleccionado.value)) {
-    configuracion.value.excepcionesEmpleados.push(empleadoSeleccionado.value);
-    empleadoSeleccionado.value = '';
+  if (tecnicoSeleccionado.value && !configuracion.value.excepcionesEmpleados.includes(tecnicoSeleccionado.value)) {
+    configuracion.value.excepcionesEmpleados.push(tecnicoSeleccionado.value);
+    tecnicoSeleccionado.value = '';
     guardarConfiguracion();
   }
 };
 
-const removerExcepcion = (empId) => {
-  configuracion.value.excepcionesEmpleados = configuracion.value.excepcionesEmpleados.filter(id => id !== empId);
+const removerExcepcion = (tecId) => {
+  configuracion.value.excepcionesEmpleados = configuracion.value.excepcionesEmpleados.filter(id => id !== tecId);
   guardarConfiguracion();
 };
 
-const getEmpleadoNombre = (empId) => {
-  const emp = empleados.value.find(e => e._id === empId);
-  return emp?.nombre || empId;
+const getTecnicoNombre = (tecId) => {
+  const tec = tecnicos.value.find(t => t._id === tecId);
+  return tec?.nombre || tecId;
 };
 
 onMounted(() => {

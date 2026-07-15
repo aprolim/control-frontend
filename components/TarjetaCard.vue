@@ -4,7 +4,6 @@
     <div class="flex justify-between items-start mb-2">
       <h4 class="font-semibold text-gray-900 truncate flex-1">{{ tarjeta.titulo }}</h4>
       <div class="flex gap-1 ml-2">
-        <!-- Estado de progreso (activa/pausada) -->
         <span v-if="tarjeta.estadoProgreso === 'activa'" 
               class="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full flex items-center gap-1"
               title="En ejecución">
@@ -22,7 +21,6 @@
           ⏳ Pendiente
         </span>
         
-        <!-- Prioridad -->
         <span :class="prioridadColor" class="px-2 py-1 rounded-full text-xs font-medium">
           {{ prioridadTexto }}
         </span>
@@ -74,7 +72,7 @@
         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span>Cliente verificado ★</span>
+        <span>Usuario verificado ★</span>
       </div>
       
       <div v-if="tarjeta.tolerancias?.length" class="text-xs text-orange-600 flex items-center gap-1">

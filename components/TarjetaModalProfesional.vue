@@ -64,30 +64,70 @@
           </div>
         </div>
         
-        <!-- Tiempo -->
+        <!-- ============================================================
+             COMENTARIO DEL TÉCNICO (VISIBLE PARA SUPERVISOR Y TÉCNICO)
+             ============================================================ -->
+        <div v-if="tarjeta.registroHoras && tarjeta.registroHoras.length > 0" 
+             class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
+          <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
+            💬 Comentario del técnico
+          </h4>
+          <div v-for="(registro, index) in tarjeta.registroHoras.slice().reverse().filter(r => r.comentario)" :key="index" 
+               class="border-b border-yellow-100 dark:border-yellow-800/50 last:border-0 py-2">
+            <p class="text-sm text-gray-700 dark:text-gray-300">
+              {{ registro.comentario }}
+            </p>
+            <div class="flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <span>📅 {{ formatDate(registro.fecha) }}</span>
+              <span>⏱️ Trabajó: {{ formatTiempo((registro.horasTrabajadas || 0) * 60 + (registro.minutosTrabajados || 0)) }}</span>
+              <span>📊 {{ registro.porcentajeAvance }}%</span>
+            </div>
+          </div>
+          <p v-if="!tarjeta.registroHoras.some(r => r.comentario)" class="text-sm text-gray-500 dark:text-gray-400 italic">
+            El técnico no dejó comentario.
+          </p>
+        </div>
+        
+        <!-- ============================================================
+             TIEMPO - INFORMACIÓN CORREGIDA
+             ============================================================ -->
         <div class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg p-4">
           <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-3">⏱️ Tiempo</h4>
-          <div class="grid grid-cols-3 gap-4 text-center">
+          <div class="grid grid-cols-2 gap-4 text-center">
             <div>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Estimado</p>
-              <p class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ formatTiempo(tarjeta.tiempoEstimadoEmpleado) }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Tu tiempo estimado</p>
+              <p class="text-lg font-bold" :class="tiempoEstimadoActual > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500 dark:text-red-400'">
+                {{ tiempoEstimadoActual > 0 ? formatTiempo(tiempoEstimadoActual) : 'No definido' }}
+              </p>
             </div>
             <div>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Trabajado</p>
-              <p class="text-lg font-bold text-green-600 dark:text-green-400">{{ formatTiempoTrabajado() }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Restante</p>
-              <p class="text-lg font-bold" :class="tiempoRestanteClass">{{ formatTiempoRestante() }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">⏱️ Tiempo real trabajado</p>
+              <p class="text-lg font-bold text-green-600 dark:text-green-400">
+                {{ tiempoRealTrabajadoFormateado }}
+              </p>
+              <p class="text-[10px] text-gray-400" v-if="tiempoEstimadoActual > 0 && tiempoRealTrabajado > 0">
+                <span v-if="tiempoRealTrabajado <= tiempoEstimadoActual" class="text-green-500">
+                  ✅ {{ formatTiempo(tiempoEstimadoActual - tiempoRealTrabajado) }} menos de lo estimado
+                </span>
+                <span v-else class="text-orange-500">
+                  ⚠️ {{ formatTiempo(tiempoRealTrabajado - tiempoEstimadoActual) }} más de lo estimado
+                </span>
+              </p>
             </div>
           </div>
         </div>
         
-        <!-- MODIFICAR TIEMPO ESTIMADO - SOLO SI NO HA INICIADO -->
-        <div v-if="esAsignadoAMi && tarjeta.estado === 'en_progreso' && tarjeta.estadoProgreso === 'pausada' && tarjeta.tiempoEstimadoEmpleado === 0" 
+        <!-- ============================================================
+             ESTABLECER/MODIFICAR TIEMPO ESTIMADO
+             ============================================================ -->
+        <div v-if="esAsignadoAMi && tarjeta.estado === 'en_progreso' && tarjeta.estadoProgreso === 'pausada'" 
              class="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg border border-green-200 dark:border-green-800">
-          <h4 class="font-semibold text-gray-800 dark:text-white mb-2">⏱️ Establecer tiempo estimado</h4>
-          <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Define cuánto tiempo te tomará completar esta tarea.</p>
+          <h4 class="font-semibold text-gray-800 dark:text-white mb-2">
+            ⏱️ {{ tiempoEstimadoActual > 0 ? 'Modificar tiempo estimado' : 'Establecer tiempo estimado' }}
+          </h4>
+          <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+            {{ tiempoEstimadoActual > 0 ? 'Puedes modificar el tiempo si lo deseas.' : 'Define el tiempo que te tomará completar esta tarea.' }}
+          </p>
           
           <div class="flex gap-2 items-end">
             <div class="flex-1">
@@ -111,22 +151,25 @@
                     type="number"
                     step="1"
                     min="0"
-                    max="999"
+                    max="59"
                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="0"
                   />
                 </div>
               </div>
               <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                💡 Ejemplos: 2h 30min, 90min (1h 30min), 150min (2h 30min)
+                💡 Ejemplos: 2h 30min, 1h 45min, 90min (solo minutos)
+              </p>
+              <p v-if="tiempoEstimadoHoras > 0 && tiempoEstimadoMinutos > 59" class="text-xs text-red-500 dark:text-red-400 mt-1">
+                ⚠️ Cuando hay horas, los minutos no pueden ser mayores a 59
               </p>
             </div>
             <button
-              @click="establecerTiempoEstimado"
+              @click="guardarTiempoEstimado"
               :disabled="actualizandoTiempo || !tiempoValido"
-              class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
+              class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition whitespace-nowrap"
             >
-              {{ actualizandoTiempo ? 'Guardando...' : 'Establecer' }}
+              {{ actualizandoTiempo ? 'Guardando...' : 'Guardar tiempo' }}
             </button>
           </div>
           
@@ -135,21 +178,9 @@
           </div>
         </div>
         
-        <!-- MOSTRAR TIEMPO ESTIMADO ACTUAL (CUANDO YA ESTÁ ESTABLECIDO) -->
-        <div v-else-if="esAsignadoAMi && tarjeta.estado === 'en_progreso' && tarjeta.tiempoEstimadoEmpleado > 0" 
-             class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-          <div class="flex justify-between items-center">
-            <div>
-              <p class="text-sm text-gray-600 dark:text-gray-400">⏱️ Tiempo estimado establecido</p>
-              <p class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ formatTiempo(tarjeta.tiempoEstimadoEmpleado) }}</p>
-            </div>
-            <span class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 rounded-full">
-              {#} No se puede modificar después de iniciar
-            </span>
-          </div>
-        </div>
-        
-        <!-- Botones de acción -->
+        <!-- ============================================================
+             BOTONES DE ACCIÓN
+             ============================================================ -->
         <div class="flex gap-3 pt-3 flex-wrap">
           <!-- Auto-asignarse -->
           <button 
@@ -160,22 +191,23 @@
             🎯 Auto-asignarme
           </button>
           
-          <!-- Asignar por jefe -->
+          <!-- Asignar por supervisor -->
           <button 
             v-if="puedeAsignarJefe" 
             @click="abrirAsignarEmpleado" 
             class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-blue-700 transition font-medium"
           >
-            👥 Asignar a empleado
+            👥 Asignar a técnico
           </button>
           
-          <!-- Iniciar tarea (solo si tiene tiempo estimado) -->
+          <!-- Iniciar tarea -->
           <button 
-            v-if="puedeIniciar && tarjeta.tiempoEstimadoEmpleado > 0" 
+            v-if="puedeIniciar" 
             @click="iniciarTarea" 
-            class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-blue-700 transition font-medium"
+            :disabled="tiempoEstimadoActual === 0"
+            class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            🚀 Iniciar tarea
+            {{ tiempoEstimadoActual === 0 ? '⚠️ Guarda el tiempo primero' : '🚀 Iniciar tarea' }}
           </button>
           
           <!-- Reanudar -->
@@ -205,7 +237,7 @@
             📊 Registrar progreso
           </button>
           
-          <!-- Aprobar tarea (solo jefe) -->
+          <!-- Aprobar tarea (solo supervisor) -->
           <button 
             v-if="puedeAprobar" 
             @click="aprobarTarea" 
@@ -214,7 +246,7 @@
             ✅ Aprobar tarea
           </button>
           
-          <!-- Calificar (solo cliente) -->
+          <!-- Calificar (solo usuario) -->
           <button 
             v-if="puedeCalificar" 
             @click="abrirCalificar" 
@@ -244,7 +276,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useTarjetasStore } from '~/stores/tarjetas';
 import RegistrarProgresoModal from './RegistrarProgresoModal.vue';
@@ -278,12 +310,12 @@ const esAsignadoAMi = computed(() => {
 
 const puedeAutoAsignar = computed(() => {
   return !props.tarjeta.asignadoA && 
-         (authStore.isEmpleado || authStore.isJefe) && 
+         (authStore.isTecnico || authStore.isSupervisor) && 
          props.tarjeta.estado === 'pendiente';
 });
 
 const puedeAsignarJefe = computed(() => {
-  return authStore.isJefe && 
+  return authStore.isSupervisor && 
          !props.tarjeta.asignadoA && 
          props.tarjeta.estado === 'pendiente';
 });
@@ -291,8 +323,7 @@ const puedeAsignarJefe = computed(() => {
 const puedeIniciar = computed(() => {
   return esAsignadoAMi.value && 
          props.tarjeta.estado === 'en_progreso' && 
-         props.tarjeta.estadoProgreso === 'pausada' &&
-         props.tarjeta.tiempoEstimadoEmpleado > 0;
+         props.tarjeta.estadoProgreso === 'pausada';
 });
 
 const puedeReanudar = computed(() => {
@@ -312,15 +343,16 @@ const puedePausar = computed(() => {
 const puedeRegistrarProgreso = computed(() => {
   return esAsignadoAMi.value && 
          props.tarjeta.estado === 'en_progreso' && 
-         props.tarjeta.tiempoEstimadoEmpleado > 0;
+         props.tarjeta.tiempoEstimadoEmpleado > 0 &&
+         (props.tarjeta.estadoProgreso === 'activa' || props.tarjeta.tiempoAcumulado > 0);
 });
 
 const puedeAprobar = computed(() => {
-  return authStore.isJefe && props.tarjeta.estado === 'revision_jefe';
+  return authStore.isSupervisor && props.tarjeta.estado === 'revision_jefe';
 });
 
 const puedeCalificar = computed(() => {
-  return authStore.isCliente && 
+  return authStore.isUsuario && 
          props.tarjeta.estado === 'revision_cliente' && 
          !props.tarjeta.calificacion &&
          props.tarjeta.clienteInfo?.userId === authStore.user?._id;
@@ -329,6 +361,35 @@ const puedeCalificar = computed(() => {
 // ============================================================
 // COMPUTED - TIEMPO
 // ============================================================
+const tiempoEstimadoActual = computed(() => {
+  return props.tarjeta.tiempoEstimadoEmpleado || 0;
+});
+
+const calcularTiempoTrabajado = () => {
+  const horasReales = props.tarjeta.horasTotalesReales || 0;
+  const minutosReales = props.tarjeta.minutosTotalesReales || 0;
+  
+  if (horasReales > 0 || minutosReales > 0) {
+    return (horasReales * 60) + minutosReales;
+  }
+  
+  let tiempo = props.tarjeta.tiempoAcumulado || 0;
+  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+    const ahora = new Date();
+    const inicio = new Date(props.tarjeta.fechaUltimaReanudacion);
+    tiempo += Math.floor((ahora - inicio) / 1000 / 60);
+  }
+  return tiempo;
+};
+
+const tiempoRealTrabajado = computed(() => {
+  return calcularTiempoTrabajado();
+});
+
+const tiempoRealTrabajadoFormateado = computed(() => {
+  return formatTiempo(tiempoRealTrabajado.value);
+});
+
 const tiempoTotalMinutos = computed(() => {
   const horas = parseInt(tiempoEstimadoHoras.value) || 0;
   const minutos = parseInt(tiempoEstimadoMinutos.value) || 0;
@@ -352,8 +413,8 @@ const prioridadMap = {
 const estadoMap = {
   pendiente: { texto: '📋 Pendiente', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
   en_progreso: { texto: '⚙️ En Progreso', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
-  revision_jefe: { texto: '👔 Revisión Jefe', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
-  revision_cliente: { texto: '⭐ Revisión Cliente', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
+  revision_jefe: { texto: '👔 Revisión Supervisor', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  revision_cliente: { texto: '⭐ Revisión Usuario', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
   finalizada: { texto: '🏁 Finalizada', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' }
 };
 
@@ -374,17 +435,11 @@ const progresoBarraColor = computed(() => {
   return 'bg-gray-500';
 });
 
-const tiempoRestanteClass = computed(() => {
-  const restante = calcularTiempoRestante();
-  if (restante <= 0) return 'text-green-600 dark:text-green-400';
-  if (restante < 30) return 'text-red-600 dark:text-red-400 animate-pulse';
-  return 'text-orange-600 dark:text-orange-400';
-});
-
 // ============================================================
 // FUNCIONES DE TIEMPO
 // ============================================================
 const formatDate = (date) => {
+  if (!date) return 'Fecha no disponible';
   return new Date(date).toLocaleString('es-ES');
 };
 
@@ -397,34 +452,17 @@ const formatTiempo = (minutos) => {
   return `${horas}h ${mins}min`;
 };
 
-const calcularTiempoTrabajado = () => {
-  let tiempo = props.tarjeta.tiempoAcumulado || 0;
-  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
-    tiempo += Math.floor((new Date() - new Date(props.tarjeta.fechaUltimaReanudacion)) / 1000 / 60);
-  }
-  return tiempo;
-};
-
-const calcularTiempoRestante = () => {
-  const estimado = props.tarjeta.tiempoEstimadoEmpleado || 0;
-  const trabajado = calcularTiempoTrabajado();
-  return Math.max(0, estimado - trabajado);
-};
-
-const formatTiempoTrabajado = () => {
-  return formatTiempo(calcularTiempoTrabajado());
-};
-
-const formatTiempoRestante = () => {
-  return formatTiempo(calcularTiempoRestante());
-};
-
 // ============================================================
 // ACCIONES
 // ============================================================
-const establecerTiempoEstimado = async () => {
+const guardarTiempoEstimado = async () => {
   if (!tiempoValido.value) {
-    alert('Debes establecer un tiempo mayor a 0');
+    alert('⚠️ Debes establecer un tiempo mayor a 0');
+    return;
+  }
+  
+  if (tiempoEstimadoHoras.value > 0 && tiempoEstimadoMinutos.value > 59) {
+    alert('⚠️ Cuando hay horas, los minutos no pueden ser mayores a 59');
     return;
   }
   
@@ -432,9 +470,13 @@ const establecerTiempoEstimado = async () => {
   try {
     const token = localStorage.getItem('token');
     const url = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/tiempo-estimado`;
+    
     const response = await $fetch(url, {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
       body: { 
         tiempoEstimadoHoras: parseInt(tiempoEstimadoHoras.value) || 0, 
         tiempoEstimadoMinutos: parseInt(tiempoEstimadoMinutos.value) || 0 
@@ -444,25 +486,35 @@ const establecerTiempoEstimado = async () => {
     if (response.success) {
       props.tarjeta.tiempoEstimadoEmpleado = response.tarjeta.tiempoEstimadoEmpleado;
       props.tarjeta.fechaEstimadaFin = response.tarjeta.fechaEstimadaFin;
-      alert(`✅ Tiempo estimado establecido: ${formatTiempo(response.tarjeta.tiempoEstimadoEmpleado)}`);
+      alert(`✅ Tiempo estimado guardado: ${formatTiempo(response.tarjeta.tiempoEstimadoEmpleado)}`);
       emit('update');
-      emit('close');
     }
   } catch (error) {
-    console.error('Error:', error);
-    alert('Error al establecer tiempo estimado');
+    console.error('❌ Error:', error);
+    alert('Error al guardar tiempo estimado: ' + (error.message || error.data?.message || 'Error desconocido'));
   } finally {
     actualizandoTiempo.value = false;
   }
 };
 
 const iniciarTarea = async () => {
+  console.log('🚀 [INICIAR-TAREA] Iniciando tarea...');
+  
+  if (!props.tarjeta.tiempoEstimadoEmpleado || props.tarjeta.tiempoEstimadoEmpleado === 0) {
+    alert('⚠️ Debes establecer un tiempo estimado antes de iniciar la tarea.');
+    return;
+  }
+  
   try {
     const token = localStorage.getItem('token');
     const url = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/iniciar`;
+    
     const response = await $fetch(url, {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
       body: { 
         tiempoEstimadoHoras: 0, 
         tiempoEstimadoMinutos: 0 
@@ -475,8 +527,8 @@ const iniciarTarea = async () => {
       emit('close');
     }
   } catch (error) {
-    console.error('Error:', error);
-    alert('Error al iniciar la tarea');
+    console.error('❌ Error al iniciar tarea:', error);
+    alert('Error al iniciar la tarea: ' + (error.message || 'Error desconocido'));
   }
 };
 
@@ -485,7 +537,7 @@ const pausarTarea = async () => {
     const token = localStorage.getItem('token');
     await $fetch(`${config.public.apiBase}/tarjetas/${props.tarjeta._id}/pausar`, {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     alert('⏸️ Tarea pausada');
     emit('update');
@@ -501,7 +553,7 @@ const reanudarTarea = async () => {
     const token = localStorage.getItem('token');
     const response = await $fetch(`${config.public.apiBase}/tarjetas/${props.tarjeta._id}/reanudar`, {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     if (response.success) {
       alert('▶️ Tarea reanudada');
@@ -550,7 +602,7 @@ const aprobarTarea = async () => {
     const token = localStorage.getItem('token');
     await $fetch(`${config.public.apiBase}/tarjetas/${props.tarjeta._id}/aprobar-jefe`, {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     alert('✅ Tarea aprobada');
     emit('update');
@@ -564,17 +616,31 @@ const abrirCalificar = () => {
   emit('calificar', props.tarjeta);
 };
 
-// ============================================================
-// INICIALIZACIÓN
-// ============================================================
-onMounted(() => {
-  // Inicializar campos de tiempo
+const cargarTiempo = () => {
+  console.log('📋 [TarjetaModalProfesional] Cargando tiempo...');
+  
   if (props.tarjeta.tiempoEstimadoEmpleado > 0) {
     const horas = Math.floor(props.tarjeta.tiempoEstimadoEmpleado / 60);
     const minutos = props.tarjeta.tiempoEstimadoEmpleado % 60;
     tiempoEstimadoHoras.value = horas;
     tiempoEstimadoMinutos.value = minutos;
+  } else if (props.tarjeta.tiempoSugeridoJefe > 0) {
+    const horas = Math.floor(props.tarjeta.tiempoSugeridoJefe / 60);
+    const minutos = props.tarjeta.tiempoSugeridoJefe % 60;
+    tiempoEstimadoHoras.value = horas;
+    tiempoEstimadoMinutos.value = minutos;
+  } else {
+    tiempoEstimadoHoras.value = 0;
+    tiempoEstimadoMinutos.value = 0;
   }
+};
+
+watch(() => props.tarjeta, () => {
+  cargarTiempo();
+}, { deep: true, immediate: true });
+
+onMounted(() => {
+  cargarTiempo();
 });
 </script>
 

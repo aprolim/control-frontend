@@ -1,12 +1,37 @@
 <template>
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
-      <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white">{{ extra ? 'Crear Tarea Extra' : 'Nueva Solicitud' }}</h3>
         <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
       </div>
       
       <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
+        <!-- 🔥 SOLICITUDES PREDEFINIDAS (solo para usuarios autenticados) -->
+        <div v-if="!extra && authStore.isAuthenticated && solicitudesPredefinidas.length > 0" class="mb-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            📋 Solicitudes rápidas
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="solicitud in solicitudesPredefinidas"
+              :key="solicitud._id"
+              type="button"
+              @click="seleccionarPredefinida(solicitud)"
+              class="px-3 py-1.5 text-sm rounded-full border transition"
+              :class="solicitudSeleccionada === solicitud._id 
+                ? 'bg-green-100 border-green-500 text-green-700 dark:bg-green-900 dark:border-green-700 dark:text-green-300' 
+                : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600'"
+            >
+              {{ solicitud.titulo }}
+              <span :class="prioridadBadgeClass(solicitud.prioridad)" class="ml-1 text-xs px-1.5 py-0.5 rounded-full">
+                {{ prioridadLabel(solicitud.prioridad) }}
+              </span>
+            </button>
+          </div>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Selecciona una solicitud rápida o escribe tu propia solicitud</p>
+        </div>
+        
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Título *</label>
           <input
@@ -62,7 +87,7 @@
         
         <div v-else class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
           <p class="text-sm text-gray-600 dark:text-gray-400">
-            ⏱️ El tiempo de la tarea será estimado por el empleado asignado.
+            ⏱️ El tiempo de la tarea será estimado por el técnico asignado.
           </p>
         </div>
         
@@ -126,8 +151,12 @@ const emit = defineEmits(['close', 'created']);
 
 const authStore = useAuthStore();
 const tarjetasStore = useTarjetasStore();
+const config = useRuntimeConfig();
 
 const loading = ref(false);
+const solicitudesPredefinidas = ref([]);
+const solicitudSeleccionada = ref(null);
+
 const form = ref({
   titulo: '',
   descripcion: '',
@@ -154,9 +183,64 @@ const tiempoEstimadoFormateado = computed(() => {
   return `${horas} ${horas === 1 ? 'hora' : 'horas'} y ${minutos} minutos`;
 });
 
+const prioridadBadgeClass = (prioridad) => {
+  const map = {
+    baja: 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
+    media: 'bg-blue-200 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+    alta: 'bg-orange-200 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
+    urgente: 'bg-red-200 text-red-700 dark:bg-red-900 dark:text-red-300'
+  };
+  return map[prioridad] || map.media;
+};
+
+const prioridadLabel = (prioridad) => {
+  const map = {
+    baja: 'Baja',
+    media: 'Media',
+    alta: 'Alta',
+    urgente: 'Urgente'
+  };
+  return map[prioridad] || 'Media';
+};
+
+// Cargar solicitudes predefinidas (solo si está autenticado como usuario)
+const cargarSolicitudesPredefinidas = async () => {
+  if (props.extra || !authStore.isAuthenticated) return;
+  
+  try {
+    const token = localStorage.getItem('token');
+    const response = await $fetch(`${config.public.apiBase}/configuracion/solicitudes-predefinidas`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (response.success) {
+      solicitudesPredefinidas.value = response.solicitudes || [];
+    }
+  } catch (error) {
+    console.error('Error cargando solicitudes predefinidas:', error);
+  }
+};
+
+// Seleccionar una solicitud predefinida
+const seleccionarPredefinida = (solicitud) => {
+  if (solicitudSeleccionada.value === solicitud._id) {
+    // Deseleccionar
+    solicitudSeleccionada.value = null;
+    form.value.titulo = '';
+    form.value.descripcion = '';
+  } else {
+    solicitudSeleccionada.value = solicitud._id;
+    form.value.titulo = solicitud.titulo;
+    form.value.descripcion = solicitud.descripcion || '';
+  }
+};
+
 const handleSubmit = async () => {
   loading.value = true;
   try {
+    // 🔥 Usar el nombre completo del usuario autenticado
+    const nombreCompleto = authStore.user?.nombre || form.value.nombre || 'Anónimo';
+    
     if (props.extra) {
       await tarjetasStore.crearTareaExtra({
         titulo: form.value.titulo,
@@ -173,7 +257,7 @@ const handleSubmit = async () => {
         minutosEstimados: 0,
         clienteInfo: {
           logueado: form.value.logueado || authStore.isAuthenticated,
-          nombre: form.value.nombre || authStore.user?.nombre,
+          nombre: nombreCompleto,
           email: form.value.email || authStore.user?.email,
           telefono: form.value.telefono
         }
@@ -194,6 +278,7 @@ const handleSubmit = async () => {
       email: '',
       telefono: ''
     };
+    solicitudSeleccionada.value = null;
     
   } catch (error) {
     console.error('Error:', error);
@@ -202,4 +287,8 @@ const handleSubmit = async () => {
     loading.value = false;
   }
 };
+
+onMounted(() => {
+  cargarSolicitudesPredefinidas();
+});
 </script>

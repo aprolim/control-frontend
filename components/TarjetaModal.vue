@@ -12,12 +12,10 @@
             {{ prioridadTexto }}
           </span>
           <div class="flex gap-2 flex-wrap">
-            <!-- Estado de la tarea -->
             <span class="text-xs px-2 py-1 rounded-full" :class="estadoColor">
               {{ estadoTexto }}
             </span>
             
-            <!-- Estado de progreso (activa/pausada) - SOLO para tareas en progreso -->
             <span v-if="tarjeta.estado === 'en_progreso'" 
                   class="text-xs px-2 py-1 rounded-full flex items-center gap-1"
                   :class="tarjeta.estadoProgreso === 'activa' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'">
@@ -32,7 +30,7 @@
         
         <div v-if="tarjeta.tiempoSugeridoJefe > 0" class="bg-blue-50 p-3 rounded-lg border border-blue-200">
           <p class="text-sm text-blue-800">
-            💡 Sugerencia del jefe: 
+            💡 Sugerencia del supervisor: 
             <strong>{{ formatoTiempo(tarjeta.tiempoSugeridoJefe) }}</strong>
           </p>
         </div>
@@ -235,7 +233,7 @@
         
         <div class="flex gap-2 pt-4 border-t border-gray-200 flex-wrap">
           <button 
-            v-if="!tarjeta.asignadoA && (isEmpleado || isJefe) && tarjeta.estado === 'pendiente'" 
+            v-if="!tarjeta.asignadoA && (isTecnico || isSupervisor) && tarjeta.estado === 'pendiente'" 
             @click="autoAsignar" 
             class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
           >
@@ -243,15 +241,15 @@
           </button>
           
           <button 
-            v-if="isJefe && !tarjeta.asignadoA && tarjeta.estado === 'pendiente'" 
+            v-if="isSupervisor && !tarjeta.asignadoA && tarjeta.estado === 'pendiente'" 
             @click="abrirAsignarJefe" 
             class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
           >
-            Asignar a empleado
+            Asignar a técnico
           </button>
           
           <button 
-            v-if="isJefe && tarjeta.estado === 'revision_jefe'" 
+            v-if="isSupervisor && tarjeta.estado === 'revision_jefe'" 
             @click="aprobarTarea" 
             class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
           >
@@ -259,7 +257,7 @@
           </button>
           
           <button 
-            v-if="tarjeta.estado === 'revision_cliente' && isCliente && tarjeta.clienteInfo.userId === authStore.user?._id && !tarjeta.calificacion" 
+            v-if="tarjeta.estado === 'revision_cliente' && isUsuario && tarjeta.clienteInfo.userId === authStore.user?._id && !tarjeta.calificacion" 
             @click="abrirCalificar" 
             class="flex-1 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition"
           >
@@ -317,9 +315,9 @@ const authStore = useAuthStore();
 const tarjetasStore = useTarjetasStore();
 const config = useRuntimeConfig();
 
-const isJefe = computed(() => authStore.isJefe);
-const isEmpleado = computed(() => authStore.isEmpleado);
-const isCliente = computed(() => authStore.isCliente);
+const isSupervisor = computed(() => authStore.isSupervisor);
+const isTecnico = computed(() => authStore.isTecnico);
+const isUsuario = computed(() => authStore.isUsuario);
 
 const esAsignadoAMi = computed(() => {
   return props.tarjeta.asignadoA && 
@@ -352,8 +350,8 @@ const prioridadMap = {
 const estadoMap = {
   pendiente: { texto: '📋 Pendiente', color: 'bg-gray-100 text-gray-700' },
   en_progreso: { texto: '⚙️ En Progreso', color: 'bg-blue-100 text-blue-700' },
-  revision_jefe: { texto: '👔 Revisión Jefe', color: 'bg-orange-100 text-orange-700' },
-  revision_cliente: { texto: '⭐ Revisión Cliente', color: 'bg-yellow-100 text-yellow-700' },
+  revision_jefe: { texto: '👔 Revisión Supervisor', color: 'bg-orange-100 text-orange-700' },
+  revision_cliente: { texto: '⭐ Revisión Usuario', color: 'bg-yellow-100 text-yellow-700' },
   finalizada: { texto: '🏁 Finalizada', color: 'bg-gray-100 text-gray-500' }
 };
 

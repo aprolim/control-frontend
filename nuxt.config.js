@@ -17,23 +17,38 @@ export default defineNuxtConfig({
   
   runtimeConfig: {
     public: {
-      apiBase: process.env.API_BASE || 'http://localhost:5000/api',
-      wsUrl: process.env.WS_URL || 'http://localhost:5000'
+      // 🔥 CORREGIDO: Puerto 3000
+      apiBase: process.env.API_BASE || 'http://172.16.30.212:5000/api',
+      wsUrl: process.env.WS_URL || 'http://172.16.30.212:5000'
     }
   },
   
-  // ✅ AGREGAR PARA EXPONER EN RED
   devServer: {
     host: '0.0.0.0',
-    port: 3000
+    port: 3001
   },
   
   plugins: ['~/plugins/socket.client.js'],
   
   ssr: false,
   
+  nitro: {
+    routeRules: {
+      // Tus reglas de ruta si las tienes
+    }
+  },
+  
+  router: {
+    options: {
+      middleware: {
+        'manifest-route-rule': { override: true }
+      }
+    }
+  },
+  
   vite: {
     server: {
+      ws: false,
       hmr: false,
       fs: {
         strict: false
@@ -42,7 +57,6 @@ export default defineNuxtConfig({
     optimizeDeps: {
       include: ['chart.js', 'vue-chartjs', 'socket.io-client']
     },
-    hmr: false,
     clearScreen: false
   },
   
@@ -61,5 +75,5 @@ export default defineNuxtConfig({
     }
   },
   
-  compatibilityDate: '2026-06-30'
+  compatibilityDate: '2026-07-01'
 });

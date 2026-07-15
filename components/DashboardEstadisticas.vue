@@ -36,7 +36,7 @@
       </div>
       
       <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h3 class="font-semibold mb-4 text-gray-800 dark:text-white">Productividad por Empleado</h3>
+        <h3 class="font-semibold mb-4 text-gray-800 dark:text-white">Productividad por Técnico</h3>
         <canvas ref="productividadChart"></canvas>
       </div>
       

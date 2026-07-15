@@ -1,7 +1,7 @@
 <template>
   <div class="estado-empleados bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-bold text-gray-800 dark:text-white">👥 Estado de Empleados en Tiempo Real</h2>
+      <h2 class="text-xl font-bold text-gray-800 dark:text-white">👥 Estado de Técnicos en Tiempo Real</h2>
       <button 
         @click="refrescar" 
         :disabled="refrescando"
@@ -12,20 +12,20 @@
     </div>
     
     <div v-if="cargando" class="text-center py-8">
-      <div class="animate-pulse text-gray-500 dark:text-gray-400">Cargando estado de empleados...</div>
+      <div class="animate-pulse text-gray-500 dark:text-gray-400">Cargando estado de técnicos...</div>
     </div>
     
-    <div v-else-if="estadosEmpleados.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-      No hay empleados registrados
+    <div v-else-if="estadosTecnicos.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+      No hay técnicos registrados
     </div>
     
     <div v-else class="space-y-3">
       <div 
-        v-for="emp in estadosEmpleados" 
-        :key="emp.empleadoId"
+        v-for="tec in estadosTecnicos" 
+        :key="tec.empleadoId"
         class="border rounded-lg p-4 hover:shadow-md transition"
         :class="[
-          emp.tarea 
+          tec.tarea 
             ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' 
             : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'
         ]"
@@ -33,60 +33,60 @@
         <div class="flex justify-between items-start">
           <div>
             <div class="flex items-center gap-2">
-              <span class="font-semibold text-gray-800 dark:text-white">{{ emp.empleadoNombre }}</span>
+              <span class="font-semibold text-gray-800 dark:text-white">{{ tec.empleadoNombre }}</span>
               <span 
                 :class="[
-                  emp.tarea 
+                  tec.tarea 
                     ? 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-100' 
                     : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
                 ]" 
                 class="text-xs px-2 py-0.5 rounded-full"
               >
-                {{ emp.tarea ? '🟢 Ocupado' : '⚪ Disponible' }}
+                {{ tec.tarea ? '🟢 Ocupado' : '⚪ Disponible' }}
               </span>
-              <span v-if="emp.rol === 'jefe'" class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
-                👔 Jefe
+              <span v-if="tec.rol === 'supervisor'" class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
+                👔 Supervisor
               </span>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ emp.empleadoEmail }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ tec.empleadoEmail }}</p>
           </div>
-          <div v-if="emp.tarea && emp.tarea.tiempoRestante !== null" class="text-right">
+          <div v-if="tec.tarea && tec.tarea.tiempoRestante !== null" class="text-right">
             <span class="text-xs text-gray-500 dark:text-gray-400">Tiempo restante</span>
-            <p class="text-lg font-bold" :class="emp.tarea.tiempoRestante < 5 ? 'text-red-600 dark:text-red-400 animate-pulse' : 'text-blue-600 dark:text-blue-400'">
-              {{ formatTiempoRestante(emp.tarea.tiempoRestante) }}
+            <p class="text-lg font-bold" :class="tec.tarea.tiempoRestante < 5 ? 'text-red-600 dark:text-red-400 animate-pulse' : 'text-blue-600 dark:text-blue-400'">
+              {{ formatTiempoRestante(tec.tarea.tiempoRestante) }}
             </p>
           </div>
-          <div v-else-if="emp.tarea && emp.tarea.tiempoRestante === null" class="text-right">
+          <div v-else-if="tec.tarea && tec.tarea.tiempoRestante === null" class="text-right">
             <span class="text-xs text-gray-500 dark:text-gray-400">Estado</span>
             <p class="text-sm font-medium text-green-600 dark:text-green-400">En progreso</p>
           </div>
         </div>
         
-        <div v-if="emp.tarea" class="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
+        <div v-if="tec.tarea" class="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
           <div class="flex justify-between items-center mb-1">
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">📋 {{ emp.tarea.titulo }}</span>
-            <span class="text-xs text-gray-500 dark:text-gray-400">{{ emp.tarea.porcentajeCompletado }}%</span>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">📋 {{ tec.tarea.titulo }}</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">{{ tec.tarea.porcentajeCompletado }}%</span>
           </div>
           <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
             <div 
               class="bg-blue-600 dark:bg-blue-500 rounded-full h-2 transition-all duration-500"
-              :style="{ width: `${emp.tarea.porcentajeCompletado}%` }"
+              :style="{ width: `${tec.tarea.porcentajeCompletado}%` }"
             ></div>
           </div>
-          <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{{ emp.tarea.descripcion || 'Sin descripción' }}</p>
+          <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{{ tec.tarea.descripcion || 'Sin descripción' }}</p>
           
           <div class="grid grid-cols-2 gap-2 mt-2 text-xs text-gray-500 dark:text-gray-400">
-            <div v-if="emp.tarea.tiempoEstimado > 0">
-              ⏱️ Estimado: {{ formatTiempo(emp.tarea.tiempoEstimado) }}
+            <div v-if="tec.tarea.tiempoEstimado > 0">
+              ⏱️ Estimado: {{ formatTiempo(tec.tarea.tiempoEstimado) }}
             </div>
-            <div v-if="emp.tarea.tiempoTranscurrido > 0">
-              ⏲️ Transcurrido: {{ formatTiempo(emp.tarea.tiempoTranscurrido) }}
+            <div v-if="tec.tarea.tiempoTranscurrido > 0">
+              ⏲️ Transcurrido: {{ formatTiempo(tec.tarea.tiempoTranscurrido) }}
             </div>
-            <div v-if="emp.tarea.fechaEstimadaFin">
-              🎯 Finaliza: {{ formatFechaHora(emp.tarea.fechaEstimadaFin) }}
+            <div v-if="tec.tarea.fechaEstimadaFin">
+              🎯 Finaliza: {{ formatFechaHora(tec.tarea.fechaEstimadaFin) }}
             </div>
-            <div v-if="emp.tarea.fechaInicio">
-              📅 Inicio: {{ formatFechaHora(emp.tarea.fechaInicio) }}
+            <div v-if="tec.tarea.fechaInicio">
+              📅 Inicio: {{ formatFechaHora(tec.tarea.fechaInicio) }}
             </div>
           </div>
         </div>
@@ -103,7 +103,7 @@
 console.log('👥 [EstadoEmpleados] Componente cargado')
 
 const config = useRuntimeConfig();
-const estadosEmpleados = ref([]);
+const estadosTecnicos = ref([]);
 const cargando = ref(false);
 const refrescando = ref(false);
 let intervaloActualizacion = null;
@@ -134,7 +134,7 @@ const formatFechaHora = (fecha) => {
   return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 };
 
-const cargarEstadoEmpleados = async () => {
+const cargarEstadoTecnicos = async () => {
   try {
     const token = localStorage.getItem('token');
     const url = `${config.public.apiBase}/tarjetas/estado-empleados`;
@@ -142,8 +142,8 @@ const cargarEstadoEmpleados = async () => {
     const response = await $fetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    estadosEmpleados.value = response;
-    console.log(`✅ [EstadoEmpleados] ${response.length} empleados cargados`)
+    estadosTecnicos.value = response;
+    console.log(`✅ [EstadoEmpleados] ${response.length} técnicos cargados`)
   } catch (error) {
     console.error('❌ [EstadoEmpleados] Error:', error);
   }
@@ -151,7 +151,7 @@ const cargarEstadoEmpleados = async () => {
 
 const refrescar = async () => {
   refrescando.value = true;
-  await cargarEstadoEmpleados();
+  await cargarEstadoTecnicos();
   setTimeout(() => {
     refrescando.value = false;
   }, 500);
@@ -159,7 +159,7 @@ const refrescar = async () => {
 
 const actualizarEstadoTiempoReal = (data) => {
   console.log('👥 [EstadoEmpleados] Actualización en tiempo real:', data);
-  cargarEstadoEmpleados();
+  cargarEstadoTecnicos();
 };
 
 if (process.client) {
@@ -169,11 +169,11 @@ if (process.client) {
 onMounted(async () => {
   console.log('✅ [EstadoEmpleados] Montado')
   cargando.value = true;
-  await cargarEstadoEmpleados();
+  await cargarEstadoTecnicos();
   cargando.value = false;
   
   intervaloActualizacion = setInterval(() => {
-    cargarEstadoEmpleados();
+    cargarEstadoTecnicos();
   }, 30000);
 });
 

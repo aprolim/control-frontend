@@ -12,40 +12,49 @@ export const useTarjetasStore = defineStore('tarjetas', {
       const grouped = {
         pendiente: [],
         en_progreso: [],
-        revision_jefe: [],
+        revision_supervisor: [], // 🔥 Cambiado de revision_jefe
         revision_cliente: [],
         finalizada: []
       };
       
       state.tarjetas.forEach(tarjeta => {
-        if (grouped[tarjeta.estado] !== undefined) {
-          grouped[tarjeta.estado].push(tarjeta);
+        // Mapear estados antiguos a nuevos
+        let estado = tarjeta.estado;
+        if (estado === 'revision_jefe') estado = 'revision_supervisor';
+        if (estado === 'completada') estado = 'finalizada';
+        
+        if (grouped[estado] !== undefined) {
+          grouped[estado].push(tarjeta);
         }
       });
       
       return {
         'Pendientes': grouped.pendiente,
         'En Progreso': grouped.en_progreso,
-        'Revisión Jefe': grouped.revision_jefe,
+        'Revisión Supervisor': grouped.revision_supervisor,
         'Revisión Cliente': grouped.revision_cliente,
         'Finalizadas': grouped.finalizada
       };
     },
     
     tareasActivas: (state) => {
-      return state.tarjetas.filter(t => t.estado !== 'finalizada');
+      return state.tarjetas.filter(t => t.estado !== 'finalizada' && t.estado !== 'revision_cliente');
     }
   },
   
   actions: {
     getAuthHeaders() {
       const token = localStorage.getItem('token');
-      if (!token) return {};
+      if (!token) {
+        console.warn('⚠️ [Store] No hay token en localStorage');
+        return {};
+      }
+      console.log(`🔑 [Store] Token presente: ${token.substring(0, 30)}...`);
       return { Authorization: `Bearer ${token}` };
     },
     
     // ============================================================
-    // FETCH TARJETAS - CON LOGS MEJORADOS
+    // FETCH TARJETAS
     // ============================================================
     async fetchTarjetas() {
       console.log('🔄 [Store] fetchTarjetas - Iniciando...');
@@ -61,8 +70,6 @@ export const useTarjetasStore = defineStore('tarjetas', {
           throw new Error('No autenticado');
         }
         
-        console.log(`   🔑 Token: ${headers.Authorization.substring(0, 30)}...`);
-        
         const response = await $fetch(url, { headers });
         
         console.log(`   📊 Tareas recibidas: ${response.length}`);
@@ -70,7 +77,11 @@ export const useTarjetasStore = defineStore('tarjetas', {
           const estados = {};
           const roles = {};
           response.forEach(t => {
-            estados[t.estado] = (estados[t.estado] || 0) + 1;
+            // Normalizar estados para el log
+            let estado = t.estado;
+            if (estado === 'revision_jefe') estado = 'revision_supervisor';
+            estados[estado] = (estados[estado] || 0) + 1;
+            
             if (t.asignadoA?.nombre) {
               roles[t.asignadoA.nombre] = (roles[t.asignadoA.nombre] || 0) + 1;
             }
@@ -88,10 +99,14 @@ export const useTarjetasStore = defineStore('tarjetas', {
           minutosTotalesReales: tarea.minutosTotalesReales || 0,
           tiempoEstimadoEmpleado: tarea.tiempoEstimadoEmpleado || 0,
           porcentajeCompletado: tarea.porcentajeCompletado || 0,
-          registroHoras: tarea.registroHoras || []
+          registroHoras: tarea.registroHoras || [],
+          // Normalizar estado para el frontend
+          estado: tarea.estado === 'revision_jefe' ? 'revision_supervisor' : tarea.estado
         }));
         
         console.log('✅ [Store] fetchTarjetas - Completado');
+        console.log(`   📊 Total en store: ${this.tarjetas.length}`);
+        return this.tarjetas;
       } catch (error) {
         console.error('❌ Error fetching tarjetas:', error);
         if (error.statusCode === 401) {
@@ -99,6 +114,7 @@ export const useTarjetasStore = defineStore('tarjetas', {
           const authStore = useAuthStore();
           authStore.logout();
         }
+        throw error;
       } finally {
         this.loading = false;
       }
@@ -176,7 +192,7 @@ export const useTarjetasStore = defineStore('tarjetas', {
     },
     
     // ============================================================
-    // CREAR SOLICITUD (CLIENTE)
+    // CREAR SOLICITUD
     // ============================================================
     async crearSolicitud(data) {
       console.log('📝 [Store] crearSolicitud - Creando solicitud...');
@@ -203,31 +219,7 @@ export const useTarjetasStore = defineStore('tarjetas', {
     },
     
     // ============================================================
-    // CREAR SOLICITUD PÚBLICA (SIN LOGIN)
-    // ============================================================
-    async crearSolicitudPublica(data) {
-      console.log('📝 [Store] crearSolicitudPublica - Creando solicitud pública...');
-      console.log('   📦 Datos:', data);
-      try {
-        const config = useRuntimeConfig();
-        const url = `${config.public.apiBase}/solicitudes/publicas`;
-        console.log(`   📍 URL: ${url}`);
-        
-        const response = await $fetch(url, {
-          method: 'POST',
-          body: data
-        });
-        
-        console.log('✅ [Store] crearSolicitudPublica - Creada:', response);
-        return response;
-      } catch (error) {
-        console.error('❌ Error en crearSolicitudPublica:', error);
-        throw error;
-      }
-    },
-    
-    // ============================================================
-    // CREAR TAREA EXTRA (EMPLEADO)
+    // CREAR TAREA EXTRA
     // ============================================================
     async crearTareaExtra(data) {
       console.log('📝 [Store] crearTareaExtra - Creando tarea extra...');
@@ -279,17 +271,17 @@ export const useTarjetasStore = defineStore('tarjetas', {
     },
     
     // ============================================================
-    // ASIGNAR POR JEFE (CON LOGS Y MANEJO DE ERRORES MEJORADO)
+    // 🔥 ASIGNAR POR SUPERVISOR (CORREGIDO)
     // ============================================================
-    async asignarPorJefe(id, empleadoId, tiempoSugeridoHoras = 0, tiempoSugeridoMinutos = 0) {
-      console.log('👔 [Store] asignarPorJefe - Iniciando...');
+    async asignarPorSupervisor(id, empleadoId, tiempoSugeridoHoras = 0, tiempoSugeridoMinutos = 0) {
+      console.log('👔 [Store] asignarPorSupervisor - Iniciando...');
       console.log(`   📌 Tarea ID: ${id}`);
       console.log(`   👤 Empleado ID: ${empleadoId}`);
       console.log(`   ⏱️ Tiempo sugerido: ${tiempoSugeridoHoras}h ${tiempoSugeridoMinutos}min`);
       
       try {
         const config = useRuntimeConfig();
-        const url = `${config.public.apiBase}/tarjetas/${id}/asignar-jefe`;
+        const url = `${config.public.apiBase}/tarjetas/${id}/asignar-supervisor`;
         console.log(`   📍 URL: ${url}`);
         
         const headers = this.getAuthHeaders();
@@ -306,11 +298,11 @@ export const useTarjetasStore = defineStore('tarjetas', {
           headers
         });
         
-        console.log('✅ [Store] asignarPorJefe - Respuesta:', response);
+        console.log('✅ [Store] asignarPorSupervisor - Respuesta:', response);
         await this.fetchTarjetas();
         return response;
       } catch (error) {
-        console.error('❌ [Store] asignarPorJefe - Error:', error);
+        console.error('❌ [Store] asignarPorSupervisor - Error:', error);
         console.error('   Detalles:', error.data);
         
         let mensajeError = 'Error al asignar la tarea';
@@ -330,14 +322,17 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // REGISTRAR PROGRESO
     // ============================================================
     async registrarProgreso(id, data) {
-      console.log(`📊 [Store] registrarProgreso - Tarea: ${id}`);
-      console.log('   📦 Datos:', data);
+      console.log('📤 [Store] registrarProgreso - Iniciando...');
+      console.log(`   📌 Tarea ID: ${id}`);
+      console.log(`   📦 Datos:`, data);
+      
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/progreso`;
         console.log(`   📍 URL: ${url}`);
         
         const headers = this.getAuthHeaders();
+        
         const response = await $fetch(url, {
           method: 'PUT',
           body: data,
@@ -348,7 +343,8 @@ export const useTarjetasStore = defineStore('tarjetas', {
         await this.fetchTarjetas();
         return response;
       } catch (error) {
-        console.error('❌ Error en registrarProgreso:', error);
+        console.error('❌ [Store] Error en registrarProgreso:', error);
+        console.error('   Detalles:', error.data);
         throw error;
       }
     },
@@ -375,7 +371,7 @@ export const useTarjetasStore = defineStore('tarjetas', {
     },
     
     // ============================================================
-    // CALIFICAR TAREA (CLIENTE)
+    // CALIFICAR TAREA
     // ============================================================
     async calificarTarea(id, puntaje, comentario) {
       console.log(`⭐ [Store] calificarTarea - Tarea: ${id}`);

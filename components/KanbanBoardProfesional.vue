@@ -120,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useTarjetasStore } from '~/stores/tarjetas';
 import draggable from 'vuedraggable';
 import TarjetaCardProfesional from './TarjetaCardProfesional.vue';
@@ -128,6 +128,7 @@ import TarjetaModalProfesional from './TarjetaModalProfesional.vue';
 
 const tarjetasStore = useTarjetasStore();
 
+// 🔥 Columnas con IDs actualizados (revision_supervisor en lugar de revision_jefe)
 const columnas = ref([
   { 
     id: 'pendiente', 
@@ -146,8 +147,8 @@ const columnas = ref([
     tareas: []
   },
   { 
-    id: 'revision_jefe', 
-    titulo: '👔 Revisión Jefe', 
+    id: 'revision_supervisor',  // 🔥 Cambiado de 'revision_jefe'
+    titulo: '👔 Revisión Supervisor', 
     color: 'bg-orange-500 dark:bg-orange-600',
     iconoVacio: '👔',
     permiteAgregar: false,
@@ -155,7 +156,7 @@ const columnas = ref([
   },
   { 
     id: 'revision_cliente', 
-    titulo: '⭐ Revisión Cliente', 
+    titulo: '⭐ Revisión Usuario', 
     color: 'bg-yellow-500 dark:bg-yellow-600',
     iconoVacio: '⭐',
     permiteAgregar: false,
@@ -172,32 +173,70 @@ const columnas = ref([
 ]);
 
 const totalTareas = computed(() => tarjetasStore.tarjetas.length);
-const tareasCompletadas = computed(() => tarjetasStore.tarjetas.filter(t => t.estado === 'finalizada').length);
+const tareasCompletadas = computed(() => tarjetasStore.tarjetas.filter(t => t.estado === 'finalizada' || t.estado === 'revision_cliente').length);
 const tareasEnProgreso = computed(() => tarjetasStore.tarjetas.filter(t => t.estado === 'en_progreso').length);
 
 const selectedTarjeta = ref(null);
 const modalTareaRapida = ref(false);
 
+// ============================================================
+// 🔥 FUNCIÓN PRINCIPAL: Organizar tareas en columnas
+// ============================================================
+
 const organizarTareas = () => {
+  console.log('🔄 [Kanban] Organizando tareas...');
+  
+  // Mapeo de estados a IDs de columnas
   const mapa = {
     pendiente: [],
     en_progreso: [],
-    revision_jefe: [],
+    revision_supervisor: [],  // 🔥 Cambiado de revision_jefe
     revision_cliente: [],
     finalizada: []
   };
   
   tarjetasStore.tarjetas.forEach(tarjeta => {
-    const estado = tarjeta.estado === 'completada' ? 'finalizada' : tarjeta.estado;
-    if (mapa[estado]) {
+    let estado = tarjeta.estado;
+    
+    // 🔥 Mapear estados antiguos a nuevos si vienen de la base de datos
+    if (estado === 'revision_jefe') {
+      estado = 'revision_supervisor';
+    }
+    if (estado === 'completada') {
+      estado = 'finalizada';
+    }
+    
+    if (mapa[estado] !== undefined) {
       mapa[estado].push(tarjeta);
+    } else {
+      // Si el estado no está en el mapa, asignar a pendiente por defecto
+      console.warn(`⚠️ [Kanban] Estado desconocido: ${estado}, asignando a pendiente`);
+      mapa.pendiente.push(tarjeta);
     }
   });
   
+  // Asignar tareas a cada columna
   columnas.value.forEach(col => {
-    col.tareas = mapa[col.id] || [];
+    let id = col.id;
+    // Mapear IDs de columnas antiguos a nuevos
+    if (id === 'revision_jefe') {
+      id = 'revision_supervisor';
+    }
+    col.tareas = mapa[id] || [];
+  });
+  
+  console.log(`📊 [Kanban] Tareas organizadas:`, {
+    pendiente: mapa.pendiente.length,
+    en_progreso: mapa.en_progreso.length,
+    revision_supervisor: mapa.revision_supervisor.length,
+    revision_cliente: mapa.revision_cliente.length,
+    finalizada: mapa.finalizada.length
   });
 };
+
+// ============================================================
+// DRAG & DROP
+// ============================================================
 
 const onDragEnd = async (event, nuevoEstado) => {
   const tarjetaId = event.item.__draggable_context.element._id;
@@ -205,31 +244,55 @@ const onDragEnd = async (event, nuevoEstado) => {
   
   if (!tarjeta || tarjeta.estado === nuevoEstado) return;
   
+  // 🔥 Mapear estados para compatibilidad
+  let estadoDestino = nuevoEstado;
+  if (estadoDestino === 'revision_supervisor') estadoDestino = 'revision_jefe';
+  
   const transicionesValidas = {
     pendiente: ['en_progreso'],
-    en_progreso: ['revision_jefe'],
+    en_progreso: ['revision_jefe', 'revision_supervisor'],
     revision_jefe: ['finalizada'],
+    revision_supervisor: ['finalizada'],
     revision_cliente: ['finalizada']
   };
   
-  if (!transicionesValidas[tarjeta.estado]?.includes(nuevoEstado)) {
+  // Normalizar estado actual para validación
+  let estadoActual = tarjeta.estado;
+  if (estadoActual === 'revision_jefe') estadoActual = 'revision_supervisor';
+  
+  if (!transicionesValidas[estadoActual]?.includes(estadoDestino)) {
     alert(`⚠️ No se puede mover de "${tarjeta.estado}" a "${nuevoEstado}"`);
     organizarTareas();
     return;
   }
   
-  if (nuevoEstado === 'revision_jefe' && tarjeta.porcentajeCompletado < 100) {
+  if ((estadoDestino === 'revision_jefe' || estadoDestino === 'revision_supervisor') && tarjeta.porcentajeCompletado < 100) {
     alert('⚠️ La tarea debe estar 100% completada para enviar a revisión');
     organizarTareas();
     return;
   }
   
-  await tarjetasStore.registrarProgreso(tarjetaId, {
-    porcentajeAvance: tarjeta.porcentajeCompletado || 0,
-    horasTrabajadas: 0,
-    comentario: `Movido de ${tarjeta.estado} a ${nuevoEstado}`
-  });
+  try {
+    // Registrar el movimiento como progreso
+    await tarjetasStore.registrarProgreso(tarjetaId, {
+      porcentajeAvance: tarjeta.porcentajeCompletado || 0,
+      horasTrabajadas: 0,
+      comentario: `Movido de ${tarjeta.estado} a ${nuevoEstado}`
+    });
+    
+    // Esperar a que se recarguen los datos y luego reorganizar
+    await tarjetasStore.fetchTarjetas();
+    organizarTareas();
+  } catch (error) {
+    console.error('❌ [Kanban] Error al mover tarea:', error);
+    alert('Error al mover la tarea');
+    organizarTareas();
+  }
 };
+
+// ============================================================
+// MODALES
+// ============================================================
 
 const openTarjetaModal = (tarjeta) => {
   selectedTarjeta.value = tarjeta;
@@ -244,17 +307,35 @@ const handleTareaCreada = () => {
   fetchTarjetas();
 };
 
+// ============================================================
+// FETCH Y EXPOSICIÓN DE MÉTODOS
+// ============================================================
+
 const fetchTarjetas = async () => {
+  console.log('🔄 [Kanban] fetchTarjetas...');
   await tarjetasStore.fetchTarjetas();
   organizarTareas();
 };
 
-organizarTareas();
+// 🔥 Exponer métodos al padre
+defineExpose({ 
+  fetchTarjetas,
+  organizarTareas
+});
+
+// ============================================================
+// WATCHERS Y LIFECYCLE
+// ============================================================
+
+// Organizar tareas cuando cambien en el store
 watch(() => tarjetasStore.tarjetas, () => {
   organizarTareas();
 }, { deep: true });
 
-defineExpose({ fetchTarjetas });
+// Organizar tareas al montar
+onMounted(() => {
+  organizarTareas();
+});
 </script>
 
 <style scoped>

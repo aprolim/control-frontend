@@ -2,28 +2,28 @@
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
       <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Asignar empleado</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Asignar técnico</h3>
         <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
       </div>
       
       <div class="p-4">
         <p class="mb-4 text-gray-700 dark:text-gray-300">Tarea: <strong class="text-gray-900 dark:text-white">{{ tarjeta.titulo }}</strong></p>
         
-        <div v-if="cargandoEmpleados" class="text-center py-4">
-          <div class="animate-pulse text-gray-500 dark:text-gray-400">Cargando empleados...</div>
+        <div v-if="cargandoTecnicos" class="text-center py-4">
+          <div class="animate-pulse text-gray-500 dark:text-gray-400">Cargando técnicos...</div>
         </div>
         
-        <div v-else-if="empleados.length === 0" class="text-center py-4">
-          <div class="text-yellow-600 dark:text-yellow-400">⚠️ No hay empleados disponibles</div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Registra empleados en el sistema primero</p>
+        <div v-else-if="tecnicos.length === 0" class="text-center py-4">
+          <div class="text-yellow-600 dark:text-yellow-400">⚠️ No hay técnicos disponibles</div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Registra técnicos en el sistema primero</p>
         </div>
         
         <div v-else>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Seleccionar empleado</label>
-          <select v-model="empleadoId" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white mb-4">
-            <option value="">-- Seleccionar empleado --</option>
-            <option v-for="emp in empleados" :key="emp._id" :value="emp._id">
-              {{ emp.nombre }} - {{ emp.email }}
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Seleccionar técnico</label>
+          <select v-model="tecnicoId" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white mb-4">
+            <option value="">-- Seleccionar técnico --</option>
+            <option v-for="tec in tecnicos" :key="tec._id" :value="tec._id">
+              {{ tec.nombre }} - {{ tec.email }}
             </option>
           </select>
           
@@ -61,13 +61,13 @@
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Minutos (0-59)</p>
               </div>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">El empleado verá esta sugerencia</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">El técnico verá esta sugerencia</p>
           </div>
           
           <div class="flex gap-2">
             <button 
               @click="asignar" 
-              :disabled="!empleadoId || loading" 
+              :disabled="!tecnicoId || loading" 
               class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition dark:bg-blue-700 dark:hover:bg-blue-800"
             >
               {{ loading ? 'Asignando...' : 'Asignar tarea' }}
@@ -102,10 +102,10 @@ console.log(`📋 Tarea: ${props.tarjeta.titulo}`);
 
 const tarjetasStore = useTarjetasStore();
 const config = useRuntimeConfig();
-const empleados = ref([]);
-const empleadoId = ref('');
+const tecnicos = ref([]);
+const tecnicoId = ref('');
 const loading = ref(false);
-const cargandoEmpleados = ref(false);
+const cargandoTecnicos = ref(false);
 const tiempoSugeridoHoras = ref(0);
 const tiempoSugeridoMinutos = ref(0);
 
@@ -123,9 +123,9 @@ const validarMinutosSugeridos = () => {
   tiempoSugeridoMinutos.value = minutos;
 };
 
-const cargarEmpleados = async () => {
-  console.log('📤 [AsignarEmpleadoModal] Cargando empleados...');
-  cargandoEmpleados.value = true;
+const cargarTecnicos = async () => {
+  console.log('📤 [AsignarEmpleadoModal] Cargando técnicos...');
+  cargandoTecnicos.value = true;
   try {
     const token = localStorage.getItem('token');
     const url = `${config.public.apiBase}/empleados`;
@@ -135,46 +135,49 @@ const cargarEmpleados = async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    console.log(`   📊 Empleados recibidos: ${response.length}`);
+    console.log(`   📊 Técnicos recibidos: ${response.length}`);
     
-    // 🔥 FILTRAR SOLO EMPLEADOS (excluir clientes y jefes)
-    const empleadosFiltrados = response.filter(emp => emp.rol === 'empleado');
-    console.log(`   ✅ Empleados válidos: ${empleadosFiltrados.length}`);
+    const tecnicosFiltrados = response.filter(emp => emp.rol === 'tecnico');
+    console.log(`   ✅ Técnicos válidos: ${tecnicosFiltrados.length}`);
     
-    if (empleadosFiltrados.length === 0) {
-      console.warn('⚠️ No hay empleados disponibles en el sistema');
+    if (tecnicosFiltrados.length === 0) {
+      console.warn('⚠️ No hay técnicos disponibles en el sistema');
     } else {
-      empleadosFiltrados.forEach(emp => {
-        console.log(`      - ${emp.nombre} (${emp.email}) - ${emp.rol}`);
+      tecnicosFiltrados.forEach(tec => {
+        console.log(`      - ${tec.nombre} (${tec.email}) - ${tec.rol}`);
       });
     }
     
-    empleados.value = empleadosFiltrados;
+    tecnicos.value = tecnicosFiltrados;
   } catch (error) {
-    console.error('❌ Error cargando empleados:', error);
-    alert('Error al cargar la lista de empleados');
+    console.error('❌ Error cargando técnicos:', error);
+    alert('Error al cargar la lista de técnicos');
   } finally {
-    cargandoEmpleados.value = false;
+    cargandoTecnicos.value = false;
   }
 };
 
+// ============================================================
+// 🔥 CORREGIDO: asignarPorSupervisor en lugar de asignarPorJefe
+// ============================================================
 const asignar = async () => {
-  if (!empleadoId.value) {
-    console.warn('⚠️ No se seleccionó empleado');
-    alert('Selecciona un empleado');
+  if (!tecnicoId.value) {
+    console.warn('⚠️ No se seleccionó técnico');
+    alert('Selecciona un técnico');
     return;
   }
   
   console.log('📤 [AsignarEmpleadoModal] Asignando tarea...');
-  console.log(`   - Empleado ID: ${empleadoId.value}`);
+  console.log(`   - Técnico ID: ${tecnicoId.value}`);
   console.log(`   - Tarea ID: ${props.tarjeta._id}`);
   console.log(`   - Tiempo sugerido: ${tiempoSugeridoHoras.value}h ${tiempoSugeridoMinutos.value}min`);
   
   loading.value = true;
   try {
-    const resultado = await tarjetasStore.asignarPorJefe(
+    // 🔥 CAMBIADO: asignarPorSupervisor en lugar de asignarPorJefe
+    const resultado = await tarjetasStore.asignarPorSupervisor(
       props.tarjeta._id, 
-      empleadoId.value,
+      tecnicoId.value,
       tiempoSugeridoHoras.value,
       tiempoSugeridoMinutos.value
     );
@@ -186,7 +189,9 @@ const asignar = async () => {
     console.error('   Detalles:', error.data);
     
     let mensajeError = 'Error al asignar la tarea';
-    if (error.message) {
+    if (error.data?.message) {
+      mensajeError = error.data.message;
+    } else if (error.message) {
       mensajeError = error.message;
     }
     alert(`❌ ${mensajeError}`);
@@ -196,7 +201,7 @@ const asignar = async () => {
 };
 
 onMounted(() => {
-  console.log('✅ [AsignarEmpleadoModal] Montado, cargando empleados...');
-  cargarEmpleados();
+  console.log('✅ [AsignarEmpleadoModal] Montado, cargando técnicos...');
+  cargarTecnicos();
 });
 </script>

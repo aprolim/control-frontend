@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nuxt dev --host 0.0.0.0",
+    "dev": "nuxt dev --host 0.0.0.0 --port 3001",
     "build": "nuxt build",
     "generate": "nuxt generate",
-    "preview": "nuxt preview --host 0.0.0.0"
+    "preview": "node .output/server/index.mjs"
   },
   "dependencies": {
     "@heroicons/vue": "^2.0.18",

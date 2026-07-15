@@ -3,7 +3,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
       <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white">⏱️ Establecer tiempo estimado</h3>
-        <button disabled class="text-gray-400 cursor-not-allowed">✕</button>
+        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
       </div>
       
       <div class="p-4 space-y-4">
@@ -14,9 +14,6 @@
           <p class="text-xs text-blue-600 dark:text-blue-300 mt-1">
             {{ tarjeta.descripcion || 'Sin descripción' }}
           </p>
-          <div v-if="tarjeta.tiempoSugeridoJefe > 0" class="mt-2 text-xs text-blue-600 dark:text-blue-300">
-            💡 Sugerencia del jefe: {{ formatoTiempo(tarjeta.tiempoSugeridoJefe) }}
-          </div>
         </div>
         
         <div>
@@ -37,6 +34,7 @@
                 @input="validarHoras"
                 autofocus
               />
+              <p class="text-xs text-blue-500 mt-1">Valor: {{ tiempoHoras }}</p>
             </div>
             <div class="flex-1">
               <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Minutos (0-59)</label>
@@ -50,10 +48,14 @@
                 placeholder="0"
                 @input="validarMinutos"
               />
+              <p class="text-xs text-blue-500 mt-1">Valor: {{ tiempoMinutos }}</p>
             </div>
           </div>
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            El progreso se actualizará automáticamente según el tiempo que establezcas.
+            💡 El progreso se actualizará automáticamente según el tiempo que establezcas.
+          </p>
+          <p v-if="tiempoSugeridoJefe > 0" class="text-xs text-orange-500 dark:text-orange-400 mt-1">
+            ⏱️ El jefe estimó: {{ formatoTiempo(tiempoSugeridoJefe) }}
           </p>
         </div>
         
@@ -83,12 +85,29 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['tiempo-establecido']);
+const emit = defineEmits(['tiempo-establecido', 'close']);
+
+console.log('📋 [ModalTiempoEstimado] Componente cargado');
+console.log(`   - tarjeta.tiempoSugeridoJefe: ${props.tarjeta.tiempoSugeridoJefe}`);
 
 const config = useRuntimeConfig();
 const guardando = ref(false);
 const tiempoHoras = ref(0);
 const tiempoMinutos = ref(0);
+
+// 🔥 PRECARGAR LA SUGERENCIA DEL JEFE
+const tiempoSugeridoJefe = computed(() => props.tarjeta.tiempoSugeridoJefe || 0);
+
+// Precargar valores en los inputs si el jefe sugirió algo
+onMounted(() => {
+  if (props.tarjeta.tiempoSugeridoJefe > 0) {
+    const horas = Math.floor(props.tarjeta.tiempoSugeridoJefe / 60);
+    const minutos = props.tarjeta.tiempoSugeridoJefe % 60;
+    tiempoHoras.value = horas;
+    tiempoMinutos.value = minutos;
+    console.log(`   💡 Precargada sugerencia del jefe: ${horas}h ${minutos}min`);
+  }
+});
 
 const tiempoValido = computed(() => {
   const totalMinutos = (tiempoHoras.value * 60) + tiempoMinutos.value;
@@ -118,6 +137,9 @@ const validarMinutos = () => {
   tiempoMinutos.value = minutos;
 };
 
+// ============================================================
+// 🔥 CORREGIDO: PRIMERO guardar tiempo ESTIMADO, LUEGO iniciar
+// ============================================================
 const guardarTiempo = async () => {
   const totalMinutos = (tiempoHoras.value * 60) + tiempoMinutos.value;
   
@@ -129,14 +151,16 @@ const guardarTiempo = async () => {
   guardando.value = true;
   try {
     const token = localStorage.getItem('token');
-    const url = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/iniciar`;
-    console.log('📤 Enviando tiempo estimado a:', url);
+    
+    // 🔥 PASO 1: Guardar el tiempo estimado
+    const estimadoUrl = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/tiempo-estimado`;
+    console.log('📤 PASO 1 - Guardando tiempo estimado en:', estimadoUrl);
     console.log('📦 Datos:', { 
       tiempoEstimadoHoras: tiempoHoras.value, 
       tiempoEstimadoMinutos: tiempoMinutos.value 
     });
     
-    const response = await $fetch(url, {
+    const estimadoResponse = await $fetch(estimadoUrl, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
       body: { 
@@ -145,18 +169,32 @@ const guardarTiempo = async () => {
       }
     });
     
-    console.log('✅ Respuesta:', response);
+    console.log('✅ PASO 1 - Tiempo estimado guardado:', estimadoResponse);
     
-    if (response && response._id) {
-      emit('tiempo-establecido', response);
-    } else {
-      console.error('Respuesta inesperada:', response);
-      alert('Error al guardar el tiempo estimado: Respuesta inválida del servidor');
+    // 🔥 PASO 2: Iniciar la tarea
+    const iniciarUrl = `${config.public.apiBase}/tarjetas/${props.tarjeta._id}/iniciar`;
+    console.log('📤 PASO 2 - Iniciando tarea en:', iniciarUrl);
+    
+    const iniciarResponse = await $fetch(iniciarUrl, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: { 
+        tiempoEstimadoHoras: 0, 
+        tiempoEstimadoMinutos: 0 
+      }
+    });
+    
+    console.log('✅ PASO 2 - Tarea iniciada:', iniciarResponse);
+    
+    if (iniciarResponse && iniciarResponse._id) {
+      alert('✅ Tarea iniciada exitosamente');
+      emit('tiempo-establecido', iniciarResponse);
+      emit('close');
     }
   } catch (error) {
     console.error('❌ Error detallado:', error);
     console.error('❌ Error response:', error.data);
-    alert('Error al guardar el tiempo estimado: ' + (error.data?.message || error.message));
+    alert('Error: ' + (error.data?.message || error.message || 'Error desconocido'));
   } finally {
     guardando.value = false;
   }
