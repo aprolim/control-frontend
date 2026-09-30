@@ -12,13 +12,12 @@ export const useTarjetasStore = defineStore('tarjetas', {
       const grouped = {
         pendiente: [],
         en_progreso: [],
-        revision_supervisor: [], // 🔥 Cambiado de revision_jefe
+        revision_supervisor: [],
         revision_cliente: [],
         finalizada: []
       };
       
       state.tarjetas.forEach(tarjeta => {
-        // Mapear estados antiguos a nuevos
         let estado = tarjeta.estado;
         if (estado === 'revision_jefe') estado = 'revision_supervisor';
         if (estado === 'completada') estado = 'finalizada';
@@ -77,7 +76,6 @@ export const useTarjetasStore = defineStore('tarjetas', {
           const estados = {};
           const roles = {};
           response.forEach(t => {
-            // Normalizar estados para el log
             let estado = t.estado;
             if (estado === 'revision_jefe') estado = 'revision_supervisor';
             estados[estado] = (estados[estado] || 0) + 1;
@@ -100,7 +98,7 @@ export const useTarjetasStore = defineStore('tarjetas', {
           tiempoEstimadoEmpleado: tarea.tiempoEstimadoEmpleado || 0,
           porcentajeCompletado: tarea.porcentajeCompletado || 0,
           registroHoras: tarea.registroHoras || [],
-          // Normalizar estado para el frontend
+          logTiempos: tarea.logTiempos || [],
           estado: tarea.estado === 'revision_jefe' ? 'revision_supervisor' : tarea.estado
         }));
         
@@ -271,7 +269,7 @@ export const useTarjetasStore = defineStore('tarjetas', {
     },
     
     // ============================================================
-    // 🔥 ASIGNAR POR SUPERVISOR (CORREGIDO)
+    // ASIGNAR POR SUPERVISOR
     // ============================================================
     async asignarPorSupervisor(id, empleadoId, tiempoSugeridoHoras = 0, tiempoSugeridoMinutos = 0) {
       console.log('👔 [Store] asignarPorSupervisor - Iniciando...');
@@ -315,6 +313,59 @@ export const useTarjetasStore = defineStore('tarjetas', {
         }
         
         throw new Error(mensajeError);
+      }
+    },
+    
+    // ============================================================
+    // 🔥 DEVOLVER TAREA (Técnico)
+    // ============================================================
+    async devolverTarea(id, motivo = '') {
+      console.log(`↩️ [Store] devolverTarea - Tarea: ${id}`);
+      try {
+        const config = useRuntimeConfig();
+        const url = `${config.public.apiBase}/tarjetas/${id}/devolver`;
+        console.log(`   📍 URL: ${url}`);
+        
+        const headers = this.getAuthHeaders();
+        const response = await $fetch(url, {
+          method: 'PUT',
+          body: { motivo },
+          headers
+        });
+        
+        console.log('✅ [Store] devolverTarea - Respuesta:', response);
+        await this.fetchTarjetas();
+        return response;
+      } catch (error) {
+        console.error('❌ Error en devolverTarea:', error);
+        throw error;
+      }
+    },
+    
+    // ============================================================
+    // 🔥 REASIGNAR TAREA (Supervisor)
+    // ============================================================
+    async reasignarTarea(id, nuevoEmpleadoId, motivo = '') {
+      console.log(`🔄 [Store] reasignarTarea - Tarea: ${id}`);
+      console.log(`   👤 Nuevo empleado: ${nuevoEmpleadoId}`);
+      try {
+        const config = useRuntimeConfig();
+        const url = `${config.public.apiBase}/tarjetas/${id}/reasignar`;
+        console.log(`   📍 URL: ${url}`);
+        
+        const headers = this.getAuthHeaders();
+        const response = await $fetch(url, {
+          method: 'PUT',
+          body: { nuevoEmpleadoId, motivo },
+          headers
+        });
+        
+        console.log('✅ [Store] reasignarTarea - Respuesta:', response);
+        await this.fetchTarjetas();
+        return response;
+      } catch (error) {
+        console.error('❌ Error en reasignarTarea:', error);
+        throw error;
       }
     },
     

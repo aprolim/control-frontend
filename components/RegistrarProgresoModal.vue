@@ -11,7 +11,7 @@
         <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
           <p class="text-sm font-medium text-gray-800 dark:text-white">{{ tarjeta.titulo }}</p>
           <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-            <span>Progreso actual: <strong class="text-blue-600 dark:text-blue-400">{{ tarjeta.porcentajeCompletado }}%</strong></span>
+            <span>Progreso actual: <strong class="text-blue-600 dark:text-blue-400">{{ progresoInicial }}%</strong></span>
             <span>Tiempo estimado: <strong>{{ formatTiempo(tarjeta.tiempoEstimadoEmpleado) }}</strong></span>
           </div>
           <div class="text-xs text-green-600 dark:text-green-400 mt-1">
@@ -28,35 +28,50 @@
           <input
             v-model.number="form.porcentajeAvance"
             type="range"
-            min="0"
+            :min="progresoInicial"
             max="100"
             step="5"
             class="w-full"
           />
-          <div class="text-center text-sm font-bold mt-1" :class="porcentajeColor">
-            {{ form.porcentajeAvance }}%
+          <div class="flex justify-between items-center mt-1">
+            <span class="text-xs text-gray-400 dark:text-gray-500">Inicio: {{ progresoInicial }}%</span>
+            <span class="text-center text-sm font-bold" :class="porcentajeColor">
+              {{ form.porcentajeAvance }}%
+            </span>
+            <span class="text-xs text-gray-400 dark:text-gray-500">Meta: 100%</span>
           </div>
         </div>
         
-        <!-- COMENTARIO (OPCIONAL) -->
+        <!-- COMENTARIO (OBLIGATORIO) -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            💬 Comentario (opcional)
+            💬 Comentario <span class="text-red-500">*</span>
           </label>
           <textarea
             v-model="form.comentario"
-            rows="2"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-            placeholder="Describe el avance realizado..."
+            rows="3"
+            required
+            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition"
+            :class="comentarioError 
+              ? 'border-red-400 dark:border-red-500 focus:ring-red-500 focus:border-red-500' 
+              : 'border-gray-300 dark:border-gray-600'"
+            placeholder="Explica brevemente el avance realizado, si la tarea se adelantó o retrasó, y por qué..."
+            @input="comentarioError = false"
           ></textarea>
+          <p v-if="comentarioError" class="text-xs text-red-500 dark:text-red-400 mt-1">
+            ⚠️ El comentario es obligatorio para que el supervisor entienda el contexto del avance.
+          </p>
+          <p v-else class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Obligatorio: el supervisor necesita saber por qué la tarea se adelantó o retrasó.
+          </p>
         </div>
         
         <!-- BOTONES -->
         <div class="flex gap-2 pt-2">
           <button
             type="submit"
-            :disabled="loading"
-            class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition dark:bg-green-700 dark:hover:bg-green-800"
+            :disabled="loading || !comentarioValido"
+            class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition dark:bg-green-700 dark:hover:bg-green-800"
           >
             {{ loading ? 'Guardando...' : '📊 Registrar avance' }}
           </button>
@@ -92,14 +107,23 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated']);
 
-console.log('📊 [RegistrarProgresoModal] Componente cargado - VERSIÓN SIMPLIFICADA');
+console.log('📊 [RegistrarProgresoModal] Componente cargado');
 
 const tarjetasStore = useTarjetasStore();
 const loading = ref(false);
+const comentarioError = ref(false);
+
+// 🔥 Progreso inicial: se fija al montar el componente
+const progresoInicial = ref(props.tarjeta.porcentajeCompletado || 0);
 
 const form = ref({
   porcentajeAvance: props.tarjeta.porcentajeCompletado || 0,
   comentario: ''
+});
+
+// 🔥 Validación del comentario: no vacío y con al menos 5 caracteres
+const comentarioValido = computed(() => {
+  return form.value.comentario && form.value.comentario.trim().length >= 5;
 });
 
 const tiempoTranscurridoFormateado = computed(() => {
@@ -131,6 +155,12 @@ const formatTiempo = (minutos) => {
 };
 
 const handleSubmit = async () => {
+  // 🔥 Validar comentario
+  if (!comentarioValido.value) {
+    comentarioError.value = true;
+    return;
+  }
+  
   console.log('📤 [RegistrarProgresoModal] Enviando progreso...');
   console.log(`   📊 Progreso: ${form.value.porcentajeAvance}%`);
   console.log(`   💬 Comentario: ${form.value.comentario}`);
@@ -139,7 +169,7 @@ const handleSubmit = async () => {
   try {
     const dataToSend = {
       porcentajeAvance: form.value.porcentajeAvance,
-      comentario: form.value.comentario
+      comentario: form.value.comentario.trim()
     };
     
     console.log('📦 Datos enviados:', dataToSend);
@@ -155,4 +185,11 @@ const handleSubmit = async () => {
     loading.value = false;
   }
 };
+
+// 🔥 Asegurar que el slider arranque en el progreso actual al montar
+onMounted(() => {
+  progresoInicial.value = props.tarjeta.porcentajeCompletado || 0;
+  form.value.porcentajeAvance = progresoInicial.value;
+  console.log(`📊 [RegistrarProgresoModal] Slider inicializado en ${progresoInicial.value}%`);
+});
 </script>

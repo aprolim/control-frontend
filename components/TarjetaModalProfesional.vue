@@ -64,9 +64,7 @@
           </div>
         </div>
         
-        <!-- ============================================================
-             COMENTARIO DEL TÉCNICO (VISIBLE PARA SUPERVISOR Y TÉCNICO)
-             ============================================================ -->
+        <!-- Comentario del técnico -->
         <div v-if="tarjeta.registroHoras && tarjeta.registroHoras.length > 0" 
              class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
           <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
@@ -89,8 +87,53 @@
         </div>
         
         <!-- ============================================================
-             TIEMPO - INFORMACIÓN CORREGIDA
+             LOG DE TIEMPOS (HISTORIAL)
              ============================================================ -->
+        <div v-if="tarjeta.logTiempos && tarjeta.logTiempos.length > 0" 
+             class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+          <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
+            📋 Historial de tiempos
+          </h4>
+          <div class="max-h-60 overflow-y-auto space-y-2">
+            <div v-for="(log, index) in tarjeta.logTiempos.slice().reverse()" :key="index" 
+                 class="bg-white dark:bg-gray-700 rounded-lg p-2 text-xs">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="font-medium" :class="getTipoColor(log.tipo)">
+                    {{ getTipoLabel(log.tipo) }}
+                  </span>
+                  <span class="text-gray-500 dark:text-gray-400 ml-2">
+                    {{ formatFechaHora(log.timestamp) }}
+                  </span>
+                </div>
+                <span v-if="log.eficiencia" :class="getEficienciaColor(log.eficiencia)" class="px-2 py-0.5 rounded-full text-[10px]">
+                  {{ getEficienciaLabel(log.eficiencia) }}
+                </span>
+              </div>
+              <div class="text-gray-600 dark:text-gray-300 mt-1">
+                <span v-if="log.tiempoMinutos > 0">⏱️ {{ formatTiempo(log.tiempoMinutos) }}</span>
+                <span v-if="log.tiempoAnterior > 0" class="text-gray-400"> (anterior: {{ formatTiempo(log.tiempoAnterior) }})</span>
+                <span v-if="log.diferencia !== 0" :class="log.diferencia > 0 ? 'text-red-500' : 'text-green-500'">
+                  {{ log.diferencia > 0 ? '+' : '' }}{{ log.diferencia }} min
+                </span>
+              </div>
+              <div v-if="log.progreso > 0" class="text-gray-500 dark:text-gray-400">
+                📊 Progreso: {{ log.progreso }}% ({{ formatTiempo(log.tiempoTrabajado) }} trabajados)
+              </div>
+              <div v-if="log.motivo" class="text-gray-400 dark:text-gray-500 text-[10px]">
+                💬 {{ log.motivo }}
+              </div>
+              <div v-if="log.por && log.por !== 'Sistema'" class="text-gray-400 dark:text-gray-500 text-[10px]">
+                👤 {{ log.por }} ({{ log.rol }})
+              </div>
+              <div v-if="log.tecnicoAnterior" class="text-gray-400 dark:text-gray-500 text-[10px]">
+                🔄 {{ log.tecnicoAnterior }} → {{ log.tecnicoNuevo }}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tiempo -->
         <div class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg p-4">
           <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-3">⏱️ Tiempo</h4>
           <div class="grid grid-cols-2 gap-4 text-center">
@@ -117,9 +160,7 @@
           </div>
         </div>
         
-        <!-- ============================================================
-             ESTABLECER/MODIFICAR TIEMPO ESTIMADO
-             ============================================================ -->
+        <!-- Establecer/Modificar tiempo estimado -->
         <div v-if="esAsignadoAMi && tarjeta.estado === 'en_progreso' && tarjeta.estadoProgreso === 'pausada'" 
              class="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg border border-green-200 dark:border-green-800">
           <h4 class="font-semibold text-gray-800 dark:text-white mb-2">
@@ -181,7 +222,7 @@
         <!-- ============================================================
              BOTONES DE ACCIÓN
              ============================================================ -->
-        <div class="flex gap-3 pt-3 flex-wrap">
+        <div class="flex flex-wrap gap-3 pt-3">
           <!-- Auto-asignarse -->
           <button 
             v-if="puedeAutoAsignar" 
@@ -198,6 +239,24 @@
             class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-blue-700 transition font-medium"
           >
             👥 Asignar a técnico
+          </button>
+          
+          <!-- 🔥 DEVOLVER TAREA (solo técnico, tarea sin tiempo) -->
+          <button 
+            v-if="puedeDevolver" 
+            @click="devolverTarea" 
+            class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-2.5 rounded-lg hover:from-orange-600 hover:to-orange-700 transition font-medium"
+          >
+            ↩️ Devolver tarea
+          </button>
+          
+          <!-- 🔥 REASIGNAR (solo supervisor) -->
+          <button 
+            v-if="puedeReasignar" 
+            @click="abrirReasignarModal" 
+            class="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2.5 rounded-lg hover:from-purple-600 hover:to-purple-700 transition font-medium"
+          >
+            👥 Reasignar
           </button>
           
           <!-- Iniciar tarea -->
@@ -254,6 +313,15 @@
           >
             ⭐ Calificar servicio
           </button>
+          
+          <!-- Finalizar tarea (técnico, con tiempo estimado) -->
+          <button 
+            v-if="puedeFinalizar" 
+            @click="finalizarTarea" 
+            class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2.5 rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition font-medium"
+          >
+            ✅ Finalizar tarea
+          </button>
         </div>
       </div>
     </div>
@@ -272,6 +340,13 @@
       @close="modalAsignarEmpleado = false"
       @asignado="handleAsignado"
     />
+    
+    <ReasignarModal
+      v-if="modalReasignar"
+      :tarjeta="tarjeta"
+      @close="modalReasignar = false"
+      @reasignado="handleReasignado"
+    />
   </div>
 </template>
 
@@ -281,6 +356,7 @@ import { useAuthStore } from '~/stores/auth';
 import { useTarjetasStore } from '~/stores/tarjetas';
 import RegistrarProgresoModal from './RegistrarProgresoModal.vue';
 import AsignarEmpleadoModal from './AsignarEmpleadoModal.vue';
+import ReasignarModal from './ReasignarModal.vue';
 
 const props = defineProps({
   tarjeta: {
@@ -297,9 +373,85 @@ const config = useRuntimeConfig();
 
 const modalRegistrarProgreso = ref(false);
 const modalAsignarEmpleado = ref(false);
+const modalReasignar = ref(false);
 const actualizandoTiempo = ref(false);
 const tiempoEstimadoHoras = ref(0);
 const tiempoEstimadoMinutos = ref(0);
+
+// ============================================================
+// FUNCIONES DE UTILIDAD
+// ============================================================
+const formatDate = (date) => {
+  if (!date) return 'Fecha no disponible';
+  return new Date(date).toLocaleString('es-ES');
+};
+
+const formatFechaHora = (date) => {
+  if (!date) return 'N/A';
+  return new Date(date).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+const formatTiempo = (minutos) => {
+  if (!minutos || minutos === 0) return '0 min';
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+  if (horas === 0) return `${mins} min`;
+  if (mins === 0) return `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+  return `${horas}h ${mins}min`;
+};
+
+const getTipoLabel = (tipo) => {
+  const map = {
+    'sugerido_supervisor': '📌 Sugerido por supervisor',
+    'estimado_tecnico': '⏱️ Estimado por técnico',
+    'recalculado_progreso': '🔄 Recalculado por progreso',
+    'tarea_iniciada': '▶️ Tarea iniciada',
+    'tarea_pausada': '⏸️ Tarea pausada',
+    'tarea_reanudada': '▶️ Tarea reanudada',
+    'tarea_finalizada': '✅ Tarea finalizada',
+    'tarea_auto_finalizada': '🤖 Auto-finalizada',
+    'tarea_devuelta': '↩️ Tarea devuelta',
+    'tarea_reasignada': '🔄 Tarea reasignada',
+    'tiempo_estimado_tecnico_reasignacion': '⏱️ Estimado (reasignación)'
+  };
+  return map[tipo] || tipo;
+};
+
+const getTipoColor = (tipo) => {
+  const map = {
+    'sugerido_supervisor': 'text-blue-600 dark:text-blue-400',
+    'estimado_tecnico': 'text-green-600 dark:text-green-400',
+    'recalculado_progreso': 'text-purple-600 dark:text-purple-400',
+    'tarea_iniciada': 'text-blue-600 dark:text-blue-400',
+    'tarea_pausada': 'text-yellow-600 dark:text-yellow-400',
+    'tarea_reanudada': 'text-green-600 dark:text-green-400',
+    'tarea_finalizada': 'text-emerald-600 dark:text-emerald-400',
+    'tarea_auto_finalizada': 'text-orange-600 dark:text-orange-400',
+    'tarea_devuelta': 'text-gray-600 dark:text-gray-400',
+    'tarea_reasignada': 'text-purple-600 dark:text-purple-400'
+  };
+  return map[tipo] || 'text-gray-600 dark:text-gray-400';
+};
+
+const getEficienciaLabel = (eficiencia) => {
+  const map = {
+    'mayor_a_esperado': '✅ Más rápido',
+    'esperado': '⚪ Esperado',
+    'menor_a_esperado': '⚠️ Más lento',
+    'critico': '🔴 Crítico'
+  };
+  return map[eficiencia] || eficiencia;
+};
+
+const getEficienciaColor = (eficiencia) => {
+  const map = {
+    'mayor_a_esperado': 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+    'esperado': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+    'menor_a_esperado': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
+    'critico': 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+  };
+  return map[eficiencia] || 'bg-gray-100 text-gray-700';
+};
 
 // ============================================================
 // COMPUTED - PERMISOS
@@ -318,6 +470,29 @@ const puedeAsignarJefe = computed(() => {
   return authStore.isSupervisor && 
          !props.tarjeta.asignadoA && 
          props.tarjeta.estado === 'pendiente';
+});
+
+// 🔥 Puede devolver: técnico asignado, tarea en progreso, SIN tiempo estimado, 0% progreso
+const puedeDevolver = computed(() => {
+  return esAsignadoAMi.value && 
+         props.tarjeta.estado === 'en_progreso' && 
+         (!props.tarjeta.tiempoEstimadoEmpleado || props.tarjeta.tiempoEstimadoEmpleado === 0) &&
+         props.tarjeta.porcentajeCompletado === 0;
+});
+
+// 🔥 Puede reasignar: supervisor, tarea en progreso o pendiente, CON técnico asignado
+const puedeReasignar = computed(() => {
+  return authStore.isSupervisor && 
+         (props.tarjeta.estado === 'en_progreso' || props.tarjeta.estado === 'pendiente') &&
+         props.tarjeta.asignadoA;
+});
+
+// 🔥 Puede finalizar: técnico asignado, tarea en progreso, CON tiempo estimado, >0% progreso
+const puedeFinalizar = computed(() => {
+  return esAsignadoAMi.value && 
+         props.tarjeta.estado === 'en_progreso' && 
+         props.tarjeta.tiempoEstimadoEmpleado > 0 &&
+         props.tarjeta.porcentajeCompletado > 0;
 });
 
 const puedeIniciar = computed(() => {
@@ -434,23 +609,6 @@ const progresoBarraColor = computed(() => {
   if (props.tarjeta.porcentajeCompletado >= 50) return 'bg-blue-500';
   return 'bg-gray-500';
 });
-
-// ============================================================
-// FUNCIONES DE TIEMPO
-// ============================================================
-const formatDate = (date) => {
-  if (!date) return 'Fecha no disponible';
-  return new Date(date).toLocaleString('es-ES');
-};
-
-const formatTiempo = (minutos) => {
-  if (!minutos || minutos === 0) return '0 min';
-  const horas = Math.floor(minutos / 60);
-  const mins = minutos % 60;
-  if (horas === 0) return `${mins} min`;
-  if (mins === 0) return `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
-  return `${horas}h ${mins}min`;
-};
 
 // ============================================================
 // ACCIONES
@@ -616,6 +774,57 @@ const abrirCalificar = () => {
   emit('calificar', props.tarjeta);
 };
 
+// ============================================================
+// 🔥 NUEVAS ACCIONES: DEVOLVER, REASIGNAR, FINALIZAR
+// ============================================================
+
+const devolverTarea = async () => {
+  if (!confirm('¿Estás seguro de que quieres devolver esta tarea? Se pondrá disponible para otros técnicos.')) {
+    return;
+  }
+  
+  try {
+    const motivo = prompt('Motivo de la devolución (opcional):');
+    await tarjetasStore.devolverTarea(props.tarjeta._id, motivo || '');
+    alert('✅ Tarea devuelta exitosamente');
+    emit('update');
+    emit('close');
+  } catch (error) {
+    console.error('❌ Error devolviendo tarea:', error);
+    alert('Error al devolver la tarea: ' + (error.message || 'Error desconocido'));
+  }
+};
+
+const abrirReasignarModal = () => {
+  modalReasignar.value = true;
+};
+
+const handleReasignado = () => {
+  modalReasignar.value = false;
+  emit('update');
+  emit('close');
+};
+
+const finalizarTarea = async () => {
+  if (!confirm('¿Estás seguro de que quieres finalizar esta tarea? Se enviará a revisión del supervisor.')) {
+    return;
+  }
+  
+  try {
+    const comentario = prompt('Comentario sobre la finalización (opcional):');
+    await tarjetasStore.finalizarTarea(props.tarjeta._id, comentario || '');
+    alert('✅ Tarea finalizada exitosamente');
+    emit('update');
+    emit('close');
+  } catch (error) {
+    console.error('❌ Error finalizando tarea:', error);
+    alert('Error al finalizar la tarea: ' + (error.message || 'Error desconocido'));
+  }
+};
+
+// ============================================================
+// LIFECYCLE
+// ============================================================
 const cargarTiempo = () => {
   console.log('📋 [TarjetaModalProfesional] Cargando tiempo...');
   

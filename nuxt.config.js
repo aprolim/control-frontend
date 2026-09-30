@@ -17,9 +17,9 @@ export default defineNuxtConfig({
   
   runtimeConfig: {
     public: {
-      // 🔥 CORREGIDO: Puerto 3000
-      apiBase: process.env.API_BASE || 'http://172.16.30.212:5000/api',
-      wsUrl: process.env.WS_URL || 'http://172.16.30.212:5000'
+      // 🔥 URLs del backend
+      apiBase: process.env.API_BASE || 'http://172.29.240.1:5000/api',
+      wsUrl: process.env.WS_URL || 'http://172.29.240.1:5000'
     }
   },
   
@@ -48,8 +48,8 @@ export default defineNuxtConfig({
   
   vite: {
     server: {
-      ws: false,
-      hmr: false,
+      // 🔥 CORRECCIÓN: Se eliminaron hmr: false y ws: false
+      // que causaban el error ERR_CONNECTION_REFUSED en el puerto 24678
       fs: {
         strict: false
       }
