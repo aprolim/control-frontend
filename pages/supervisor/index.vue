@@ -83,13 +83,11 @@
         <ReportesAvanzados />
       </div>
       
-      <div v-if="activeTab === 'configuracion'">
-        <ConfiguracionAutoCierre />
+      <div v-if="activeTab === 'notificaciones'">
+        <ConfiguracionNotificaciones />
       </div>
       
-      <div v-if="activeTab === 'solicitudes'">
-        <GestionSolicitudesPredefinidas />
-      </div>
+
     </div>
     
     <!-- Modales -->
@@ -119,7 +117,6 @@ const authStore = useAuthStore();
 const tarjetasStore = useTarjetasStore();
 const { isSupervisor } = useRoles();
 
-// Verificar que sea supervisor
 if (!isSupervisor.value) {
   console.warn('⚠️ [Supervisor] Usuario no es supervisor, redirigiendo...');
   navigateTo('/');
@@ -131,15 +128,13 @@ const tabs = ref([
   { key: 'kanban', label: 'Kanban', icon: '📌' },
   { key: 'dashboard', label: 'Dashboard', icon: '📊' },
   { key: 'reportes', label: 'Reportes', icon: '📈' },
-  { key: 'configuracion', label: 'Configuración', icon: '⚙️' },
-  { key: 'solicitudes', label: 'Solicitudes Rápidas', icon: '⚡' }
+  { key: 'notificaciones', label: 'Notificaciones', icon: '🔔' },
 ]);
 
 const activeTab = ref('kanban');
 const modalSolicitud = ref(false);
 const kanbanBoardRef = ref(null);
 
-// Variables para Sockets
 const socket = ref(null);
 let pollingInterval = null;
 
@@ -159,162 +154,48 @@ const configurarSockets = () => {
     return;
   }
   
-  console.log('✅ [Supervisor] Socket disponible para actualizaciones en tiempo real');
+  console.log('✅ [Supervisor] Socket disponible');
   console.log('🔌 [Supervisor] Socket ID:', socket.value.id);
   
-  // EVENTO CRÍTICO: Nueva tarea disponible
   socket.value.on('nueva-tarea-disponible', (data) => {
-    console.log('========================================');
-    console.log('📢 [Supervisor][SOCKET] ✅ EVENTO RECIBIDO!');
-    console.log('📢 [Supervisor][SOCKET] Datos completos:', JSON.stringify(data, null, 2));
-    console.log('📢 [Supervisor][SOCKET] Tarea:', data.tarea?.titulo);
-    console.log('========================================');
-    
+    console.log('📢 [Supervisor] Nueva tarea disponible:', data.tarea?.titulo);
     recargarDatos();
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('📋 Nueva tarea disponible', {
-        body: `${data.tarea?.titulo || 'Nueva tarea'}`,
-        icon: '/favicon.ico'
-      });
-    }
   });
   
-  // EVENTO: Tarea tomada por un técnico
   socket.value.on('tarea-tomada', (data) => {
-    console.log('========================================');
-    console.log('📢 [Supervisor][SOCKET] Tarea tomada por:', data.empleado?.nombre);
-    console.log('📢 [Supervisor][SOCKET] Tarea:', data.tarea?.titulo);
-    console.log('========================================');
+    console.log('📢 [Supervisor] Tarea tomada por:', data.empleado?.nombre);
     recargarDatos();
   });
   
-  // EVENTO: Tarea lista para revisión
-  socket.value.on('tarea-lista-para-revision', (data) => {
-    console.log('========================================');
-    console.log('👔 [Supervisor][SOCKET] Tarea lista para revisión:', data);
-    console.log('📢 [Supervisor][SOCKET] Tarea:', data.titulo);
-    console.log('📢 [Supervisor][SOCKET] Empleado:', data.empleadoNombre);
-    console.log('========================================');
-    recargarDatos();
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('📋 Tarea lista para revisión', {
-        body: `"${data.titulo}" - ${data.empleadoNombre}`,
-        icon: '/favicon.ico'
-      });
-    }
-  });
-  
-  // Evento: Estado actualizado (progreso)
-  socket.value.on('estado-actualizado', (data) => {
-    console.log('📊 [Supervisor][SOCKET] Estado actualizado:', data);
+  socket.value.on('kanban-actualizar', (data) => {
+    console.log('📋 [Supervisor] Kanban actualizar:', data.mensaje);
     recargarDatos();
   });
   
-  // Evento: Estado general actualizado
-  socket.value.on('estado-general-actualizado', (data) => {
-    console.log('🔄 [Supervisor][SOCKET] Estado general actualizado:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea iniciada
-  socket.value.on('tarea-iniciada-tiempo-real', (data) => {
-    console.log('🚀 [Supervisor][SOCKET] Tarea iniciada:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea pausada
-  socket.value.on('tarea-pausada-tiempo-real', (data) => {
-    console.log('⏸️ [Supervisor][SOCKET] Tarea pausada:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea reanudada
-  socket.value.on('tarea-reanudada-tiempo-real', (data) => {
-    console.log('▶️ [Supervisor][SOCKET] Tarea reanudada:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Progreso actualizado
-  socket.value.on('progreso-actualizado', (data) => {
-    console.log('📈 [Supervisor][SOCKET] Progreso actualizado:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea completada automáticamente
-  socket.value.on('tarea-completada-automaticamente', (data) => {
-    console.log('🎉 [Supervisor][SOCKET] Tarea completada automáticamente:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea lista para calificar
-  socket.value.on('tarea-lista-para-calificar', (data) => {
-    console.log('⭐ [Supervisor][SOCKET] Tarea lista para calificar:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea calificada
-  socket.value.on('tarea-calificada', (data) => {
-    console.log('⭐ [Supervisor][SOCKET] Tarea calificada:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea aprobada y enviada al cliente
-  socket.value.on('tarea-aprobada-enviada-cliente', (data) => {
-    console.log('✅ [Supervisor][SOCKET] Tarea aprobada y enviada al cliente:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea enviada a cliente
-  socket.value.on('tarea-enviada-a-cliente', (data) => {
-    console.log('📤 [Supervisor][SOCKET] Tarea enviada a cliente:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Nueva tarea asignada
-  socket.value.on('nueva-tarea-asignada', (data) => {
-    console.log('📢 [Supervisor][SOCKET] Nueva tarea asignada:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Rol actualizado
+  socket.value.on('estado-actualizado', () => recargarDatos());
+  socket.value.on('estado-general-actualizado', () => recargarDatos());
+  socket.value.on('tarea-iniciada-tiempo-real', () => recargarDatos());
+  socket.value.on('tarea-pausada-tiempo-real', () => recargarDatos());
+  socket.value.on('tarea-reanudada-tiempo-real', () => recargarDatos());
+  socket.value.on('progreso-actualizado', () => recargarDatos());
+  socket.value.on('tarea-completada-automaticamente', () => recargarDatos());
+  socket.value.on('tarea-calificada', () => recargarDatos());
+  socket.value.on('tarea-auto-finalizada', () => recargarDatos());
+  socket.value.on('tarea-finalizada-por-ti', () => recargarDatos());
+  socket.value.on('tarea-reasignada', () => recargarDatos());
+  socket.value.on('nueva-tarea-asignada', () => recargarDatos());
   socket.value.on('rol-actualizado', (data) => {
-    console.log('🔄 [Supervisor][SOCKET] Rol actualizado:', data);
+    console.log('🔄 [Supervisor] Rol actualizado:', data);
     recargarDatos();
   });
   
-  // Evento: Tarea finalizada sin cliente
-  socket.value.on('tarea-finalizada-sin-cliente', (data) => {
-    console.log('✅ [Supervisor][SOCKET] Tarea finalizada sin cliente:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea por expirar
-  socket.value.on('tarea-por-expirar', (data) => {
-    console.log('⚠️ [Supervisor][SOCKET] Tarea por expirar:', data);
-    recargarDatos();
-  });
-  
-  // Evento: Tarea auto-finalizada
-  socket.value.on('tarea-auto-finalizada', (data) => {
-    console.log('🤖 [Supervisor][SOCKET] Tarea auto-finalizada:', data);
-    recargarDatos();
-  });
-  
-  console.log('✅ [Supervisor] Todos los eventos de socket configurados');
+  console.log('✅ [Supervisor] Eventos configurados');
 };
 
-// ============================================================
-// FALLBACK - POLLING (si no hay sockets)
-// ============================================================
-
 const iniciarPollingFallback = () => {
-  console.warn('⚠️ [Supervisor] Usando polling como fallback (sin sockets)');
-  console.log('🔄 [Supervisor] Polling cada 10 segundos');
   pollingInterval = setInterval(async () => {
-    console.log('🔄 [Supervisor] Polling ejecutado');
     await recargarDatos();
-  }, 10000);
+  }, 20000);
 };
 
 // ============================================================
@@ -322,47 +203,23 @@ const iniciarPollingFallback = () => {
 // ============================================================
 
 const recargarDatos = async () => {
-  console.log('========================================');
-  console.log('🔄 [Supervisor] 🔥 recargarDatos() llamado');
-  console.log('🔄 [Supervisor] Timestamp:', new Date().toISOString());
-  console.log('🔄 [Supervisor] Estado actual del store:', {
-    tarjetas: tarjetasStore.tarjetas.length,
-    loading: tarjetasStore.loading,
-    estadisticas: tarjetasStore.estadisticas ? '✅ Presentes' : '❌ Vacías'
-  });
-  
   try {
-    console.log('📤 [Supervisor] Fetching tarjetas...');
     await tarjetasStore.fetchTarjetas();
-    console.log('📤 [Supervisor] Fetching estadisticas...');
     await tarjetasStore.fetchEstadisticas();
     
-    console.log('🔄 [Supervisor] Después de fetch:');
-    console.log('   - Tarjetas:', tarjetasStore.tarjetas.length);
-    console.log('   - Estadisticas:', tarjetasStore.estadisticas ? '✅ Presentes' : '❌ Vacías');
-    
     if (kanbanBoardRef.value) {
-      console.log('🔄 [Supervisor] Actualizando Kanban...');
       kanbanBoardRef.value.organizarTareas();
-      console.log('✅ [Supervisor] Kanban actualizado');
-    } else {
-      console.warn('⚠️ [Supervisor] kanbanBoardRef no está disponible');
     }
-    
-    console.log('✅ [Supervisor] Datos recargados exitosamente');
   } catch (error) {
-    console.error('❌ [Supervisor] Error en recargarDatos:', error);
+    console.error('❌ [Supervisor] Error:', error);
   }
-  console.log('========================================');
 };
 
 const logout = () => {
-  console.log('👤 [Supervisor] Cerrando sesión...');
   authStore.logout();
 };
 
 const abrirModalSolicitud = () => {
-  console.log('📝 [Supervisor] Abriendo modal de solicitud');
   modalSolicitud.value = true;
 };
 
@@ -371,43 +228,46 @@ const abrirModalSolicitud = () => {
 // ============================================================
 
 onMounted(async () => {
-  console.log('========================================');
-  console.log('🔄 [Supervisor] onMounted - Iniciando...');
-  console.log('========================================');
+  console.log('🔄 [Supervisor] onMounted');
   
-  // Cargar usuario del storage
-  const loaded = authStore.loadFromStorage();
-  console.log('🔍 [Supervisor] authStore.loadFromStorage():', loaded);
-  console.log('🔍 [Supervisor] Usuario:', authStore.user);
-  console.log('🔍 [Supervisor] Rol:', authStore.user?.rol);
-  
-  // Cargar datos iniciales
-  console.log('📤 [Supervisor] Cargando datos iniciales...');
+  authStore.loadFromStorage();
   await recargarDatos();
-  
-  // Configurar sockets después de cargar los datos iniciales
-  console.log('🔌 [Supervisor] Configurando sockets...');
   configurarSockets();
   
-  console.log('✅ [Supervisor] Inicialización completada');
-  console.log('========================================');
+  setTimeout(() => {
+    const nuxtApp = useNuxtApp();
+    const socket = nuxtApp.$socket;
+    if (socket && authStore.user?._id) {
+      console.log('🔄 [Supervisor] Forzando join al socket...');
+      socket.emit('join', authStore.user._id);
+    }
+  }, 1000);
+  
+  setTimeout(() => {
+    const nuxtApp = useNuxtApp();
+    const socket = nuxtApp.$socket;
+    if (socket && socket.connected && authStore.user?._id) {
+      socket.emit('join', authStore.user._id);
+    }
+  }, 3000);
+  
+  // Polling de respaldo
+  if (pollingInterval) clearInterval(pollingInterval);
+  pollingInterval = setInterval(async () => {
+    await recargarDatos();
+  }, 20000);
 });
 
 onUnmounted(() => {
-  console.log('🛑 [Supervisor] onUnmounted - Limpiando...');
-  
-  // Limpiar intervalos
   if (pollingInterval) {
-    console.log('🛑 [Supervisor] Limpiando polling interval');
     clearInterval(pollingInterval);
+    pollingInterval = null;
   }
   
-  // Desconectar eventos de socket
   if (socket.value) {
-    console.log('🛑 [Supervisor] Desconectando eventos de socket');
     socket.value.off('nueva-tarea-disponible');
     socket.value.off('tarea-tomada');
-    socket.value.off('tarea-lista-para-revision');
+    socket.value.off('kanban-actualizar');
     socket.value.off('estado-actualizado');
     socket.value.off('estado-general-actualizado');
     socket.value.off('tarea-iniciada-tiempo-real');
@@ -415,18 +275,12 @@ onUnmounted(() => {
     socket.value.off('tarea-reanudada-tiempo-real');
     socket.value.off('progreso-actualizado');
     socket.value.off('tarea-completada-automaticamente');
-    socket.value.off('tarea-lista-para-calificar');
     socket.value.off('tarea-calificada');
-    socket.value.off('tarea-aprobada-enviada-cliente');
-    socket.value.off('tarea-enviada-a-cliente');
+    socket.value.off('tarea-auto-finalizada');
+    socket.value.off('tarea-finalizada-por-ti');
+    socket.value.off('tarea-reasignada');
     socket.value.off('nueva-tarea-asignada');
     socket.value.off('rol-actualizado');
-    socket.value.off('tarea-finalizada-sin-cliente');
-    socket.value.off('tarea-por-expirar');
-    socket.value.off('tarea-auto-finalizada');
-    console.log('✅ [Supervisor] Eventos desconectados');
   }
-  
-  console.log('✅ [Supervisor] Limpieza completada');
 });
 </script>

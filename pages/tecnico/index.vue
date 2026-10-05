@@ -1,334 +1,635 @@
 <template>
-  <div class="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
-    <!-- Navbar -->
-    <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 transition-colors duration-300">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+    <!-- ============================================================ -->
+    <!-- NAVBAR                                                        -->
+    <!-- ============================================================ -->
+    <nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40 transition-colors duration-300">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-14">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+        <div class="flex justify-between items-center h-16">
+          <!-- Logo -->
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-sm">
               <span class="text-white text-sm font-bold">CP</span>
             </div>
-            <h1 class="text-base font-semibold text-gray-800 dark:text-white">Control de Personal</h1>
+            <div>
+              <h1 class="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Control de Personal</h1>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Panel de Técnico</p>
+            </div>
           </div>
           
-          <div class="flex items-center gap-3">
+          <!-- Acciones derecha -->
+          <div class="flex items-center gap-2">
+            <!-- Campana de notificaciones -->
+            <button
+              v-if="!silencioActivo"
+              @click="menuSilencioAbierto = !menuSilencioAbierto"
+              class="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition"
+              title="Notificaciones activas"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <span
+                v-if="tareasDisponibles.length > 0"
+                class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold"
+              >
+                {{ tareasDisponibles.length }}
+              </span>
+            </button>
+            <button
+              v-else
+              @click="reactivarNotificaciones"
+              class="relative p-2 rounded-lg text-orange-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition flex items-center gap-1.5"
+              :title="`Silenciado (${tiempoRestanteSilencio?.minutos} min restantes)`"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+              </svg>
+              <span class="text-xs font-semibold">
+                {{ tiempoRestanteSilencio?.minutos }}m
+              </span>
+            </button>
+            
             <ThemeToggle />
             
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center">
-                <span class="text-xs font-medium text-blue-700 dark:text-blue-300">{{ authStore.user?.nombre?.charAt(0) || '?' }}</span>
+            <!-- Perfil -->
+            <div class="flex items-center gap-2 pl-3 ml-1 border-l border-gray-200 dark:border-gray-800">
+              <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                <span class="text-xs font-semibold text-white">{{ authStore.user?.nombre?.charAt(0) || '?' }}</span>
               </div>
               <div class="hidden sm:block">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ authStore.user?.nombre || 'Usuario' }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 ml-2">Técnico</span>
+                <p class="text-xs font-medium text-gray-900 dark:text-white leading-tight">{{ authStore.user?.nombre || 'Usuario' }}</p>
+                <p class="text-[10px] text-blue-600 dark:text-blue-400 leading-tight font-medium">Técnico</p>
               </div>
-              <span class="sm:hidden text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">Técnico</span>
             </div>
+            
             <button
               @click="logout"
-              class="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition"
+              class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition"
+              title="Cerrar sesión"
             >
-              Salir
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
             </button>
           </div>
         </div>
       </div>
     </nav>
     
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <!-- Botones de acción -->
-      <div class="mb-4 flex flex-wrap justify-end gap-2">
+    <!-- Menú de silencio (popover) -->
+    <div
+      v-if="menuSilencioAbierto"
+      class="fixed inset-0 z-50"
+      @click="menuSilencioAbierto = false"
+    >
+      <div class="absolute top-16 right-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-2 w-56">
+        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 py-2">
+          Silenciar notificaciones
+        </p>
         <button
-          @click="cargarTareasDisponibles"
-          class="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center gap-1.5 text-sm shadow-sm"
+          v-for="opcion in opcionesSilencio"
+          :key="opcion.minutos"
+          @click="silencioSeleccionado(opcion.minutos)"
+          class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm text-gray-700 dark:text-gray-300"
         >
-          <span class="text-base">🔄</span>
-          <span>Actualizar</span>
-        </button>
-        <button
-          @click="abrirModalTareaExtra"
-          class="px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition flex items-center gap-1.5 text-sm shadow-sm"
-        >
-          <span class="text-base">📝</span>
-          <span>Mi Tarea Extra</span>
+          {{ opcion.label }}
         </button>
       </div>
+    </div>
+    
+    <!-- ============================================================ -->
+    <!-- CONTENIDO PRINCIPAL                                           -->
+    <!-- ============================================================ -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       
-      <!-- Estado de Técnicos -->
-      <div class="mb-6">
-        <EstadoEmpleados />
-      </div>
-      
-      <!-- Tareas Disponibles -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
-        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-          <div class="flex justify-between items-center">
-            <div>
-              <h2 class="text-lg font-bold text-gray-800 dark:text-white">📋 Tareas Disponibles</h2>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Selecciona una tarea para comenzar a trabajar</p>
-            </div>
-            <button 
-              @click="tomarSiguienteTarea" 
-              :disabled="cargandoTarea || tareasDisponibles.length === 0"
-              class="bg-gradient-to-r from-green-500 to-green-600 text-white px-5 py-2 rounded-lg hover:from-green-600 hover:to-green-700 disabled:opacity-50 transition flex items-center gap-2 shadow-sm"
-            >
-              <span>🎯</span>
-              {{ cargandoTarea ? 'Tomando...' : 'Tomar Siguiente Tarea' }}
-            </button>
-          </div>
+      <!-- Barra de acciones superiores -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 class="text-xl font-bold text-gray-900 dark:text-white">Panel de trabajo</h1>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Gestiona tus tareas y monitorea tu rendimiento</p>
         </div>
         
+        <div class="flex items-center gap-2">
+          <button
+            @click="cargarTareasDisponibles"
+            :disabled="cargandoDisponibles"
+            class="inline-flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition shadow-sm"
+          >
+            <svg class="w-4 h-4" :class="{ 'animate-spin': cargandoDisponibles }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Actualizar
+          </button>
+          
+          <button
+            @click="abrirModalTareaExtra"
+            class="inline-flex items-center gap-2 px-3.5 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition shadow-sm"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Tarea extra
+          </button>
+        </div>
+      </div>
+      
+      <!-- Estado de técnicos -->
+      <EstadoEmpleados />
+      
+      <!-- ============================================================ -->
+      <!-- TAREAS DISPONIBLES                                            -->
+      <!-- ============================================================ -->
+      <section
+        class="bg-white dark:bg-gray-900 rounded-xl border overflow-hidden transition-all duration-300 shadow-sm"
+        :class="tareasDisponibles.length > 0 
+          ? 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900/30' 
+          : 'border-gray-200 dark:border-gray-800'"
+      >
+        <!-- Header -->
+        <header class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+              <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                Tareas disponibles
+                <span
+                  v-if="tareasDisponibles.length > 0"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-semibold"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                  {{ tareasDisponibles.length }}
+                </span>
+              </h2>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Selecciona una tarea para comenzar</p>
+            </div>
+          </div>
+          
+          <button 
+            @click="tomarSiguienteTarea" 
+            :disabled="cargandoTarea || tareasDisponibles.length === 0"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
+          >
+            <svg v-if="!cargandoTarea" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {{ cargandoTarea ? 'Tomando...' : 'Tomar siguiente' }}
+          </button>
+        </header>
+        
+        <!-- Contenido -->
         <div class="p-5">
-          <div v-if="cargandoDisponibles" class="text-center py-8">
-            <div class="animate-pulse">
-              <div class="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-3"></div>
-              <div class="text-gray-500 dark:text-gray-400">Cargando tareas disponibles...</div>
+          <!-- Cargando -->
+          <div v-if="cargandoDisponibles" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div v-for="i in 3" :key="i" class="animate-pulse border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
+              <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
+              <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
             </div>
           </div>
           
-          <div v-else-if="tareasDisponibles.length === 0" class="text-center py-8">
-            <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span class="text-2xl">📭</span>
+          <!-- Vacío -->
+          <div v-else-if="tareasDisponibles.length === 0" class="text-center py-10">
+            <div class="w-14 h-14 mx-auto rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+              <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
             </div>
-            <p class="text-gray-500 dark:text-gray-400">No hay tareas disponibles en este momento</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">No hay tareas disponibles</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Vuelve a intentar más tarde</p>
           </div>
           
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div 
+          <!-- Grid de tareas -->
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <article 
               v-for="tarea in tareasDisponibles" 
               :key="tarea._id"
-              class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer hover:border-green-300 dark:hover:border-green-700 hover:transform hover:-translate-y-1"
               @click="tomarTareaEspecifica(tarea._id)"
+              class="group border border-gray-200 dark:border-gray-800 rounded-lg p-4 hover:border-green-400 dark:hover:border-green-600 hover:shadow-md cursor-pointer transition-all duration-200 flex flex-col"
             >
-              <div class="flex justify-between items-start mb-2">
-                <h3 class="font-semibold text-gray-800 dark:text-white line-clamp-1">{{ tarea.titulo }}</h3>
-                <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <h3 class="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2 flex-1">
+                  {{ tarea.titulo }}
+                </h3>
+                <span :class="prioridadColorClass(tarea.prioridad)" class="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide">
                   {{ prioridadTextoLabel(tarea.prioridad) }}
                 </span>
               </div>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">{{ tarea.descripcion || 'Sin descripción' }}</p>
-              <div class="text-xs text-gray-500 dark:text-gray-400">
-                <div v-if="tarea.clienteInfo" class="flex items-center gap-2 mb-1">
-                  <span>👤 {{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
-                  <span v-if="tarea.clienteInfo.telefono" class="text-gray-400">📞 {{ tarea.clienteInfo.telefono }}</span>
-                </div>
-                <div>📅 {{ new Date(tarea.createdAt).toLocaleDateString() }}</div>
-              </div>
               
-              <!-- Mostrar progreso si la tarea ya tiene tiempo estimado -->
-              <div v-if="tarea.tiempoEstimadoEmpleado > 0" class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex justify-between text-xs">
-                  <span class="text-gray-500">Progreso:</span>
-                  <span class="font-medium text-blue-600">{{ calcularProgresoReal(tarea) }}%</span>
+              <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-3 flex-1">
+                {{ tarea.descripcion || 'Sin descripción' }}
+              </p>
+              
+              <div class="space-y-1 text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+                <div v-if="tarea.clienteInfo" class="flex items-center gap-1.5">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span class="truncate">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
                 </div>
-                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
-                  <div class="bg-blue-500 rounded-full h-1.5 transition-all duration-500" :style="{ width: `${calcularProgresoReal(tarea)}%` }"></div>
-                </div>
-                <div class="flex justify-between text-xs text-gray-400 mt-1">
-                  <span>⏱️ {{ formatTiempo(calcularTiempoTranscurrido(tarea)) }}</span>
-                  <span>🎯 {{ formatTiempo(tarea.tiempoEstimadoEmpleado) }}</span>
+                <div class="flex items-center gap-1.5">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>{{ new Date(tarea.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) }}</span>
                 </div>
               </div>
               
               <button 
-                class="mt-3 w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-1.5 rounded text-sm hover:from-green-600 hover:to-green-700 transition"
+                class="w-full inline-flex items-center justify-center gap-1.5 bg-green-600 text-white py-1.5 rounded-md text-xs font-medium hover:bg-green-700 transition"
                 @click.stop="tomarTareaEspecifica(tarea._id)"
               >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
                 Tomar tarea
               </button>
-            </div>
+            </article>
           </div>
         </div>
-      </div>
+      </section>
       
-      <!-- Mis Tareas -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
-        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-          <h2 class="text-lg font-bold text-gray-800 dark:text-white">⚙️ Mis Tareas</h2>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Tareas que tienes asignadas actualmente</p>
-        </div>
+      <!-- ============================================================ -->
+      <!-- MIS TAREAS                                                    -->
+      <!-- ============================================================ -->
+      <section class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+        <header class="px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+              <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white">Mis tareas</h2>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Tareas asignadas actualmente</p>
+            </div>
+          </div>
+        </header>
         
         <div class="p-5">
-          <div v-if="tareasEnProgreso.length === 0 && !tareaActiva" class="text-center py-8">
-            <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span class="text-2xl">📭</span>
+          <!-- Vacío -->
+          <div v-if="tareasEnProgreso.length === 0 && !tareaActiva" class="text-center py-10">
+            <div class="w-14 h-14 mx-auto rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+              <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
-            <p class="text-gray-500 dark:text-gray-400">No tienes tareas asignadas actualmente</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">No tienes tareas asignadas</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Toma una tarea disponible para comenzar</p>
           </div>
           
           <div v-else class="space-y-4">
-            <!-- Tarea Activa -->
-            <div v-if="tareaActiva" class="border-2 border-green-500 bg-gradient-to-r from-green-50 to-white dark:from-green-900/20 dark:to-gray-800 rounded-xl p-5 shadow-md">
-              <div class="flex justify-between items-start mb-3">
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <h3 class="font-bold text-gray-800 dark:text-white text-lg">{{ tareaActiva.titulo }}</h3>
-                  <span class="text-xs px-2 py-1 rounded-full bg-green-500 text-white flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
-                    ACTIVA
+            <!-- ============================================================ -->
+            <!-- TAREA ACTIVA (compacta)                                       -->
+            <!-- ============================================================ -->
+            <article v-if="tareaActiva" class="relative bg-white dark:bg-gray-900 border-2 border-emerald-500 rounded-xl overflow-hidden shadow-lg ring-4 ring-emerald-100 dark:ring-emerald-900/20">
+              
+              <!-- Barra superior delgada con estado + hora -->
+              <div 
+                class="px-4 py-1 flex items-center justify-between transition-colors duration-500"
+                :class="{
+                  'bg-emerald-600': tiempoRestanteActivo > 10,
+                  'bg-amber-500': tiempoRestanteActivo <= 10 && tiempoRestanteActivo > 5,
+                  'bg-red-600': tiempoRestanteActivo <= 5
+                }"
+              >
+                <div class="flex items-center gap-1.5 text-white">
+                  <span class="relative flex h-1.5 w-1.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                  </span>
+                  <span class="text-[10px] font-bold uppercase tracking-widest">
+                    {{ tiempoRestanteActivo <= 5 ? '¡Últimos minutos!' : 'En curso' }}
                   </span>
                 </div>
-                <span :class="prioridadColorClass(tareaActiva.prioridad)" class="px-2 py-0.5 rounded-full text-xs font-medium">
-                  {{ prioridadTextoLabel(tareaActiva.prioridad) }}
+                <span class="text-[10px] font-medium text-white/80 tabular-nums">
+                  {{ new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) }}
                 </span>
               </div>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ tareaActiva.descripcion || 'Sin descripción' }}</p>
               
-              <div class="grid grid-cols-2 gap-4 text-sm mb-4">
-                <div>
-                  <span class="text-gray-500 dark:text-gray-400">Progreso:</span>
-                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
-                    <div class="bg-green-500 rounded-full h-2 transition-all duration-500" :style="{ width: `${calcularProgresoReal(tareaActiva)}%` }"></div>
-                  </div>
-                  <span class="text-xs font-medium text-green-600">{{ calcularProgresoReal(tareaActiva) }}%</span>
-                  <span class="text-xs text-gray-400 ml-2">({{ formatTiempo(calcularTiempoTranscurrido(tareaActiva)) }} trabajados)</span>
-                </div>
-                <div>
-                  <span class="text-gray-500 dark:text-gray-400">Tiempo estimado:</span>
-                  <span class="font-medium ml-1 text-blue-600">{{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}</span>
-                </div>
-              </div>
-              
-              <!-- Mostrar el nombre completo del usuario que solicitó -->
-              <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 text-sm">
-                <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                  <span>👤 Usuario:</span>
-                  <span class="font-medium">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
-                  <span v-if="tareaActiva.clienteInfo.telefono" class="text-gray-500">📞 {{ tareaActiva.clienteInfo.telefono }}</span>
-                </div>
-              </div>
-              
-              <div class="flex gap-3">
-                <button 
-                  @click="pausarTarea(tareaActiva._id)"
-                  class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition text-sm font-medium"
-                >
-                  ⏸️ Pausar
-                </button>
-                <button 
-                  @click="abrirModalProgreso(tareaActiva)"
-                  class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition text-sm font-medium"
-                >
-                  📊 Registrar progreso
-                </button>
-              </div>
-            </div>
-            
-            <!-- Tareas Pausadas -->
-            <div v-for="tarea in tareasPausadas" :key="tarea._id" 
-                 class="border border-yellow-200 dark:border-yellow-800 bg-gradient-to-r from-yellow-50 to-white dark:from-yellow-900/20 dark:to-gray-800 rounded-xl p-4">
-              <div class="flex justify-between items-start mb-2">
-                <div class="flex items-center gap-2">
-                  <h3 class="font-semibold text-gray-800 dark:text-white">{{ tarea.titulo }}</h3>
-                  <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 flex items-center gap-1">
-                    ⏸️ Pausada
+              <!-- Contenido compacto -->
+              <div class="p-4 space-y-3">
+                
+                <!-- Fila 1: Título + Prioridad -->
+                <div class="flex items-start justify-between gap-3">
+                  <h3 class="text-base font-bold text-gray-900 dark:text-white flex-1 leading-snug">
+                    {{ tareaActiva.titulo }}
+                  </h3>
+                  <span :class="prioridadColorClass(tareaActiva.prioridad)" class="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide">
+                    {{ prioridadTextoLabel(tareaActiva.prioridad) }}
                   </span>
                 </div>
-                <span :class="prioridadColorClass(tarea.prioridad)" class="px-2 py-0.5 rounded-full text-xs font-medium">
-                  {{ prioridadTextoLabel(tarea.prioridad) }}
-                </span>
-              </div>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">{{ tarea.descripcion || 'Sin descripción' }}</p>
-              
-              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
-                <div>
-                  <span class="text-gray-500 dark:text-gray-400">Progreso:</span>
-                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
-                    <div class="bg-blue-500 rounded-full h-2 transition-all duration-500" :style="{ width: `${calcularProgresoReal(tarea)}%` }"></div>
+                
+                <!-- Fila 2: Cliente (si aplica) -->
+                <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" 
+                    class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span class="font-medium text-gray-700 dark:text-gray-300">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
                   </div>
-                  <span class="text-xs font-medium text-blue-600">{{ calcularProgresoReal(tarea) }}%</span>
-                  <span class="text-xs text-gray-400 ml-2">({{ formatTiempo(calcularTiempoTranscurrido(tarea)) }} trabajados)</span>
+                  <div v-if="tareaActiva.clienteInfo.telefono" class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span>{{ tareaActiva.clienteInfo.telefono }}</span>
+                  </div>
                 </div>
+                
+                <!-- Fila 3: Tiempos en grid horizontal compacto -->
+                <div class="grid grid-cols-3 gap-2">
+                  <!-- Trabajado -->
+                  <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2">
+                    <p class="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-0.5">Trabajado</p>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-lg font-bold text-emerald-700 dark:text-emerald-300 font-mono tabular-nums leading-none">
+                        {{ formatTiempo(tiempoTranscurridoActivo) }}
+                      </span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    </div>
+                  </div>
+                  
+                  <!-- Estimado -->
+                  <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-2">
+                    <p class="text-[9px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-0.5">Estimado</p>
+                    <span class="text-lg font-bold text-blue-700 dark:text-blue-300 font-mono tabular-nums leading-none">
+                      {{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}
+                    </span>
+                  </div>
+                  
+                  <!-- Restante -->
+                  <div 
+                    class="rounded-lg px-3 py-2"
+                    :class="tiempoRestanteActivo > 0 
+                      ? 'bg-orange-50 dark:bg-orange-900/20' 
+                      : 'bg-red-50 dark:bg-red-900/20'"
+                  >
+                    <p class="text-[9px] font-semibold uppercase tracking-wider mb-0.5"
+                      :class="tiempoRestanteActivo > 0 ? 'text-orange-700 dark:text-orange-400' : 'text-red-700 dark:text-red-400'">
+                      Restante
+                    </p>
+                    <span 
+                      class="text-lg font-bold font-mono tabular-nums leading-none"
+                      :class="tiempoRestanteActivo > 0 ? 'text-orange-700 dark:text-orange-300' : 'text-red-700 dark:text-red-300'"
+                    >
+                      {{ tiempoRestanteActivo > 0 ? formatTiempo(tiempoRestanteActivo) : 'Excedido' }}
+                    </span>
+                  </div>
+                </div>
+                
+                <!-- Fila 4: Progreso compacto con % integrado -->
                 <div>
-                  <span class="text-gray-500 dark:text-gray-400">Tiempo estimado:</span>
-                  <span class="font-medium ml-1 text-blue-600">{{ formatTiempo(tarea.tiempoEstimadoEmpleado) }}</span>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Progreso</span>
+                    <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{{ progresoRealActivo }}%</span>
+                  </div>
+                  <div class="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      class="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full h-1.5 transition-all duration-1000 ease-linear" 
+                      :style="{ width: `${progresoRealActivo}%` }"
+                    ></div>
+                  </div>
+                </div>
+                
+                <!-- Fila 5: Botones compactos a la derecha -->
+                <div class="flex items-center justify-end gap-2 pt-1">
+                  <button 
+                    @click="pausarTarea(tareaActiva._id)"
+                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition shadow-sm"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Pausar
+                  </button>
+                  <button 
+                    @click="abrirModalProgreso(tareaActiva)"
+                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition shadow-sm"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Finalizar
+                  </button>
                 </div>
               </div>
-              
-              <!-- Mostrar el nombre completo del usuario que solicitó -->
-              <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-sm">
-                <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                  <span>👤 Usuario:</span>
-                  <span class="font-medium">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
-                  <span v-if="tarea.clienteInfo.telefono" class="text-gray-500">📞 {{ tarea.clienteInfo.telefono }}</span>
-                </div>
-              </div>
-              
-              <div class="flex gap-3">
-                <button 
-                  v-if="tarea.tiempoEstimadoEmpleado === 0"
-                  @click="abrirModalTiempo(tarea)"
-                  class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition text-sm font-medium"
-                >
-                  🚀 Establecer tiempo
-                </button>
-                <button 
-                  v-else
-                  @click="reanudarTarea(tarea._id)"
-                  class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition text-sm font-medium"
-                >
-                  ▶️ Reanudar
-                </button>
-                <button 
-                  @click="abrirModalProgreso(tarea)"
-                  class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition text-sm font-medium"
-                >
-                  📊 Registrar progreso
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Tareas Completadas -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-          <h2 class="text-lg font-bold text-gray-800 dark:text-white">✅ Tareas Completadas</h2>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Historial de tareas finalizadas</p>
-        </div>
-        
-        <div class="p-5">
-          <div v-if="tareasCompletadas.length === 0" class="text-center py-8">
-            <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span class="text-2xl">🏆</span>
-            </div>
-            <p class="text-gray-500 dark:text-gray-400">Aún no has completado ninguna tarea</p>
-          </div>
-          
-          <div v-else class="space-y-3">
-            <div v-for="tarea in tareasCompletadas" :key="tarea._id" class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50 hover:shadow-md transition">
-              <div class="flex justify-between items-start">
-                <div class="flex-1">
-                  <h3 class="font-semibold text-gray-800 dark:text-white">{{ tarea.titulo }}</h3>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Completada: {{ new Date(tarea.fechaFinalizada || tarea.updatedAt).toLocaleDateString() }}
+            </article>
+            <!-- ============================================================ -->
+            <!-- TAREAS PAUSADAS / POR INICIAR (en grid de 2 columnas)        -->
+            <!-- ============================================================ -->
+            <div 
+              v-if="tareasPausadas.length > 0" 
+              class="grid grid-cols-1 lg:grid-cols-2 gap-4"
+            >
+              <article 
+                v-for="tarea in tareasPausadas" 
+                :key="tarea._id" 
+                class="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-white dark:bg-gray-900 flex flex-col"
+              >
+                <!-- Header -->
+                <div class="p-4 border-b border-gray-100 dark:border-gray-800">
+                  <div class="flex items-start justify-between gap-4 mb-2">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                      <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
+                        {{ tarea.titulo }}
+                      </h3>
+                      <span class="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] font-semibold uppercase tracking-wide">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" />
+                        </svg>
+                        Pausada
+                      </span>
+                    </div>
+                    <span :class="prioridadColorClass(tarea.prioridad)" class="flex-shrink-0 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide">
+                      {{ prioridadTextoLabel(tarea.prioridad) }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                    {{ tarea.descripcion || 'Sin descripción' }}
                   </p>
                 </div>
-                <div v-if="tarea.calificacion?.puntaje" class="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-3 py-1 rounded-full">
-                  <span class="text-yellow-500">★</span>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ tarea.calificacion.puntaje }}/5</span>
+                
+                <!-- Grid de tiempo y progreso -->
+                <div class="grid grid-cols-2 divide-x divide-gray-100 dark:divide-gray-800 border-b border-gray-100 dark:border-gray-800">
+                  <div class="p-3 text-center">
+                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">Trabajado</p>
+                    <p class="text-base font-bold text-gray-700 dark:text-gray-300 font-mono tabular-nums">
+                      {{ formatTiempo(tarea.tiempoAcumulado || 0) }}
+                    </p>
+                  </div>
+                  <div class="p-3 text-center">
+                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">Estimado</p>
+                    <p class="text-base font-bold font-mono tabular-nums"
+                       :class="tarea.tiempoEstimadoEmpleado > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'">
+                      {{ tarea.tiempoEstimadoEmpleado > 0 ? formatTiempo(tarea.tiempoEstimadoEmpleado) : 'Sin definir' }}
+                    </p>
+                  </div>
                 </div>
-                <span v-else-if="tarea.calificacion?.autoFinalizada" class="text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 px-3 py-1 rounded-full">
-                  Auto-finalizada
-                </span>
-                <span v-else class="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">Sin calificar</span>
-              </div>
-              <!-- Mostrar el nombre completo del usuario que solicitó -->
-              <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mt-2 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
-                <span>👤 Solicitado por:</span>
-                <span class="font-medium text-gray-600 dark:text-gray-400">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
-              </div>
-              <div v-if="tarea.calificacion?.comentario" class="mt-2 text-sm text-gray-600 dark:text-gray-400 italic bg-white dark:bg-gray-800 p-2 rounded">
-                "{{ tarea.calificacion.comentario }}"
-              </div>
+                
+                <!-- Progreso -->
+                <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Progreso</span>
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 tabular-nums">{{ tarea.porcentajeCompletado || 0 }}%</span>
+                  </div>
+                  <div class="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      class="bg-blue-500 rounded-full h-1.5 transition-all duration-500" 
+                      :style="{ width: `${tarea.porcentajeCompletado || 0}%` }"
+                    ></div>
+                  </div>
+                </div>
+                
+                <!-- Acciones (flex-1 empuja al fondo) -->
+                <div class="p-4 flex gap-2 mt-auto">
+                  <button 
+                    v-if="tarea.tiempoEstimadoEmpleado === 0"
+                    @click="abrirModalTiempo(tarea)"
+                    class="flex-1 inline-flex items-center justify-center gap-2 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Establecer tiempo
+                  </button>
+                  <button 
+                    v-else
+                    @click="reanudarTarea(tarea._id)"
+                    class="flex-1 inline-flex items-center justify-center gap-2 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Reanudar
+                  </button>
+                  <button 
+                    v-if="tarea.tiempoEstimadoEmpleado > 0"
+                    @click="abrirModalProgreso(tarea)"
+                    class="inline-flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    title="Finalizar tarea"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
+              </article>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+      
+      <!-- ============================================================ -->
+      <!-- TAREAS COMPLETADAS                                            -->
+      <!-- ============================================================ -->
+      <section class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+        <header class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white">Tareas completadas</h2>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Historial de tareas finalizadas</p>
+            </div>
+          </div>
+          <span class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+            {{ tareasCompletadas.length }} {{ tareasCompletadas.length === 1 ? 'tarea' : 'tareas' }}
+          </span>
+        </header>
+        
+        <div class="p-5">
+          <div v-if="tareasCompletadas.length === 0" class="text-center py-10">
+            <div class="w-14 h-14 mx-auto rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+              <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Aún no has completado tareas</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Tus logros aparecerán aquí</p>
+          </div>
+          
+          <div v-else class="space-y-2.5">
+            <article 
+              v-for="tarea in tareasCompletadas" 
+              :key="tarea._id" 
+              class="border border-gray-200 dark:border-gray-800 rounded-lg p-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <h3 class="font-medium text-sm text-gray-900 dark:text-white truncate">
+                      {{ tarea.titulo }}
+                    </h3>
+                  </div>
+                  
+                  <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    <span class="flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {{ new Date(tarea.fechaFinalizada || tarea.updatedAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) }}
+                    </span>
+                    <span class="flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span class="text-emerald-600 dark:text-emerald-400 font-semibold">{{ formatTiempo(calcularTiempoTotalReal(tarea)) }}</span>
+                      <span v-if="tarea.tiempoEstimadoEmpleado > 0" class="text-gray-400">
+                        / {{ formatTiempo(tarea.tiempoEstimadoEmpleado) }}
+                      </span>
+                    </span>
+                  </div>
+                  
+                  <p v-if="tarea.calificacion?.comentario" class="mt-2 text-xs text-gray-500 dark:text-gray-400 italic line-clamp-2">
+                    "{{ tarea.calificacion.comentario }}"
+                  </p>
+                </div>
+                
+                <!-- Badge de calificación -->
+                <div class="flex-shrink-0">
+                  <div v-if="tarea.calificacion?.puntaje" 
+                       class="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                    <svg class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    <span class="text-xs font-bold text-amber-700 dark:text-amber-400">{{ tarea.calificacion.puntaje }}</span>
+                  </div>
+                  <span v-else-if="tarea.calificacion?.autoFinalizada" 
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 text-[10px] font-semibold uppercase">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Auto
+                  </span>
+                  <span v-else 
+                        class="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-medium uppercase">
+                    Sin calificar
+                  </span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
     
-    <!-- Modales -->
+    <!-- ============================================================ -->
+    <!-- MODALES                                                       -->
+    <!-- ============================================================ -->
     <ModalTiempoEstimado
       v-if="tareaParaTiempo"
       :tarjeta="tareaParaTiempo"
@@ -339,7 +640,7 @@
       v-if="tareaParaProgreso"
       :tarjeta="tareaParaProgreso"
       @close="tareaParaProgreso = null"
-      @updated="recargarDatos"
+      @updated="handleTareaFinalizada"
     />
     
     <SolicitudModal
@@ -355,6 +656,7 @@
 import { useAuthStore } from '~/stores/auth';
 import { useTarjetasStore } from '~/stores/tarjetas';
 import { useRoles } from '~/composables/useRoles';
+import { useNotificaciones } from '~/composables/useNotificaciones';
 import ModalTiempoEstimado from '~/components/ModalTiempoEstimado.vue';
 import RegistrarProgresoModal from '~/components/RegistrarProgresoModal.vue';
 
@@ -370,13 +672,10 @@ const authStore = useAuthStore();
 const tarjetasStore = useTarjetasStore();
 const { isTecnico } = useRoles();
 
-// Verificar que sea técnico
 if (!isTecnico.value) {
   console.warn('⚠️ [Tecnico] Usuario no es técnico, redirigiendo...');
   navigateTo('/');
 }
-
-console.log('✅ [Tecnico] Usuario verificado como técnico');
 
 const config = useRuntimeConfig();
 
@@ -387,52 +686,39 @@ const cargandoTarea = ref(false);
 const tareaParaTiempo = ref(null);
 const tareaParaProgreso = ref(null);
 const modalTareaExtra = ref(false);
+const menuSilencioAbierto = ref(false);
+
+const opcionesSilencio = [
+  { minutos: 15, label: '🔕 15 minutos' },
+  { minutos: 30, label: '🔕 30 minutos' },
+  { minutos: 60, label: '🔕 1 hora' },
+  { minutos: 120, label: '🔕 2 horas' },
+  { minutos: 480, label: '🔕 8 horas' }
+];
 
 // Variables para Sockets
 const socket = ref(null);
 let intervaloTiempoReal = null;
 let pollingInterval = null;
-const forceUpdate = ref(0);
+
+// Ref reactivo para tiempo en vivo
+const ahora = ref(Date.now());
 
 // ============================================================
-// FUNCIONES DE CÁLCULO DE PROGRESO EN TIEMPO REAL
+// 🔔 NOTIFICACIONES
 // ============================================================
 
-const calcularProgresoReal = (tarea) => {
-  if (!tarea?.tiempoEstimadoEmpleado || tarea.tiempoEstimadoEmpleado <= 0) {
-    return tarea?.porcentajeCompletado || 0;
-  }
-  
-  let tiempoTotal = tarea.tiempoAcumulado || 0;
-  
-  if (tarea.estadoProgreso === 'activa' && tarea.fechaUltimaReanudacion) {
-    const ahora = new Date();
-    const inicio = new Date(tarea.fechaUltimaReanudacion);
-    const minutosDesdeReanudacion = Math.floor((ahora - inicio) / 1000 / 60);
-    tiempoTotal += minutosDesdeReanudacion;
-  }
-  
-  const tiempoEstimado = tarea.tiempoEstimadoEmpleado;
-  let progreso = Math.min(100, Math.floor((tiempoTotal / tiempoEstimado) * 100));
-  progreso = Math.max(progreso, tarea.porcentajeCompletado || 0);
-  
-  return Math.min(100, progreso);
-};
-
-const calcularTiempoTranscurrido = (tarea) => {
-  if (!tarea) return 0;
-  
-  let tiempoTotal = tarea.tiempoAcumulado || 0;
-  
-  if (tarea.estadoProgreso === 'activa' && tarea.fechaUltimaReanudacion) {
-    const ahora = new Date();
-    const inicio = new Date(tarea.fechaUltimaReanudacion);
-    const minutosDesdeReanudacion = Math.floor((ahora - inicio) / 1000 / 60);
-    tiempoTotal += minutosDesdeReanudacion;
-  }
-  
-  return tiempoTotal;
-};
+const {
+  configuracion: notifConfig,
+  silencioActivo,
+  tiempoRestanteSilencio,
+  inicializar: inicializarNotificaciones,
+  destruir: destruirNotificaciones,
+  silenciarPorMinutos,
+  reactivarNotificaciones: reactivarNotifComposable,
+  notificarNuevaPendiente,
+  notificarTareaAsignada
+} = useNotificaciones();
 
 // ============================================================
 // COMPUTED
@@ -456,6 +742,87 @@ const tareasPausadas = computed(() => {
   }
   return tareasEnProgreso.value.filter(t => t._id !== tareaActiva.value._id);
 });
+
+// Computed de tiempo en vivo
+const tiempoTranscurridoActivo = computed(() => {
+  if (!tareaActiva.value) return 0;
+  return calcularTiempoTranscurrido(tareaActiva.value);
+});
+
+const tiempoRestanteActivo = computed(() => {
+  if (!tareaActiva.value) return 0;
+  return calcularTiempoRestante(tareaActiva.value);
+});
+
+const progresoRealActivo = computed(() => {
+  if (!tareaActiva.value) return 0;
+  return calcularProgresoReal(tareaActiva.value);
+});
+
+// ============================================================
+// FUNCIONES DE CÁLCULO
+// ============================================================
+
+const calcularProgresoReal = (tarea) => {
+  if (!tarea?.tiempoEstimadoEmpleado || tarea.tiempoEstimadoEmpleado <= 0) {
+    return tarea?.porcentajeCompletado || 0;
+  }
+  
+  let tiempoTotal = tarea.tiempoAcumulado || 0;
+  
+  if (tarea.estadoProgreso === 'activa' && tarea.fechaUltimaReanudacion) {
+    const inicio = new Date(tarea.fechaUltimaReanudacion).getTime();
+    const minutosDesdeReanudacion = Math.floor((ahora.value - inicio) / 1000 / 60);
+    tiempoTotal += minutosDesdeReanudacion;
+  }
+  
+  const tiempoEstimado = tarea.tiempoEstimadoEmpleado;
+  let progreso = Math.min(100, Math.floor((tiempoTotal / tiempoEstimado) * 100));
+  progreso = Math.max(progreso, tarea.porcentajeCompletado || 0);
+  
+  return Math.min(100, progreso);
+};
+
+const calcularTiempoTranscurrido = (tarea) => {
+  if (!tarea) return 0;
+  
+  let tiempoTotal = tarea.tiempoAcumulado || 0;
+  
+  if (tarea.estadoProgreso === 'activa' && tarea.fechaUltimaReanudacion) {
+    const inicio = new Date(tarea.fechaUltimaReanudacion).getTime();
+    const minutosDesdeReanudacion = Math.floor((ahora.value - inicio) / 1000 / 60);
+    tiempoTotal += minutosDesdeReanudacion;
+  }
+  
+  return tiempoTotal;
+};
+
+const calcularTiempoRestante = (tarea) => {
+  if (!tarea) return 0;
+  const estimado = tarea.tiempoEstimadoEmpleado || 0;
+  const transcurrido = calcularTiempoTranscurrido(tarea);
+  return Math.max(0, estimado - transcurrido);
+};
+
+const calcularTiempoTotalReal = (tarea) => {
+  if (!tarea) return 0;
+  
+  if (tarea.tiempoAcumulado && tarea.tiempoAcumulado > 0) {
+    return tarea.tiempoAcumulado;
+  }
+  
+  if (tarea.horasTotalesReales || tarea.minutosTotalesReales) {
+    return ((tarea.horasTotalesReales || 0) * 60) + (tarea.minutosTotalesReales || 0);
+  }
+  
+  if (tarea.registroHoras?.length) {
+    return tarea.registroHoras.reduce((sum, reg) => {
+      return sum + ((reg.horasTrabajadas || 0) * 60) + (reg.minutosTrabajados || 0);
+    }, 0);
+  }
+  
+  return 0;
+};
 
 // ============================================================
 // FUNCIONES DE UTILIDAD
@@ -492,6 +859,25 @@ const prioridadTextoLabel = (prioridad) => {
 };
 
 // ============================================================
+// 🔔 ACCIONES DE SILENCIO
+// ============================================================
+
+const silencioSeleccionado = async (minutos) => {
+  menuSilencioAbierto.value = false;
+  const ok = await silenciarPorMinutos(minutos);
+  if (ok) {
+    console.log(`🔕 Notificaciones silenciadas por ${minutos} min`);
+  }
+};
+
+const reactivarNotificaciones = async () => {
+  const ok = await reactivarNotifComposable();
+  if (ok) {
+    console.log('🔔 Notificaciones reactivadas');
+  }
+};
+
+// ============================================================
 // CONFIGURAR SOCKETS
 // ============================================================
 
@@ -507,177 +893,131 @@ const configurarSockets = () => {
     return;
   }
   
-  console.log('✅ [Tecnico] Socket disponible para actualizaciones en tiempo real');
+  console.log('✅ [Tecnico] Socket disponible');
   console.log('🔌 [Tecnico] Socket ID:', socket.value.id);
   
-  // EVENTO CRÍTICO: Nueva tarea disponible
-  socket.value.on('nueva-tarea-disponible', (data) => {
-    console.log('========================================');
-    console.log('📢 [Tecnico][SOCKET] ✅ NUEVA TAREA DISPONIBLE!');
-    console.log(`   📌 Título: ${data.tarea?.titulo}`);
-    console.log(`   🆔 ID: ${data.tarea?._id}`);
-    console.log('========================================');
-    
-    // Recargar tareas disponibles y mis tareas
+  // 🔔 NUEVOS: Notificaciones sonoras
+  socket.value.on('notificacion-nueva-pendiente', (data) => {
+    console.log('🔔 [Tecnico][SOCKET] Notificación nueva pendiente:', data.tarea?.titulo);
+    notificarNuevaPendiente(data);
     recargarDatos();
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('📋 Nueva tarea disponible', {
-        body: `${data.tarea?.titulo || 'Nueva tarea'}`,
-        icon: '/favicon.ico'
-      });
-    }
   });
   
-  // Tarea tomada por otro empleado
+  socket.value.on('notificacion-tarea-asignada', (data) => {
+    console.log('🔔 [Tecnico][SOCKET] Notificación tarea asignada:', data.tarea?.titulo);
+    notificarTareaAsignada(data);
+    recargarDatos();
+  });
+  
+  // Eventos de recarga normales
+  socket.value.on('nueva-tarea-disponible', (data) => {
+    console.log('📢 [Tecnico][SOCKET] NUEVA TAREA DISPONIBLE:', data.tarea?.titulo);
+    recargarDatos();
+  });
+  
   socket.value.on('tarea-tomada', (data) => {
     console.log(`📢 [Tecnico][SOCKET] Tarea tomada por: ${data.empleado?.nombre}`);
     recargarDatos();
   });
   
-  // Tarea asignada a mí
   socket.value.on('tarea-asignada', (data) => {
     console.log(`📢 [Tecnico][SOCKET] Tarea asignada: ${data.tarea?.titulo}`);
     if (data.tarea?.asignadoA?._id === authStore.user?._id) {
-      console.log('🎯 [Tecnico][SOCKET] ¡Esta tarea es para ti!');
       recargarDatos();
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('📋 Tarea asignada', {
-          body: `${data.tarea.titulo}`,
-          icon: '/favicon.ico'
-        });
-      }
     }
   });
   
-  // Estado actualizado (progreso)
+  socket.value.on('nueva-tarea-asignada', (data) => {
+    console.log(`📢 [Tecnico][SOCKET] Nueva tarea asignada: ${data.tarea?.titulo}`);
+    recargarDatos();
+  });
+  
   socket.value.on('estado-actualizado', (data) => {
-    console.log(`📊 [Tecnico][SOCKET] Estado actualizado: ${data.porcentaje}%`);
     if (data.empleadoId === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Estado general actualizado
   socket.value.on('estado-general-actualizado', (data) => {
-    console.log(`🔄 [Tecnico][SOCKET] Estado general actualizado`);
     const tarea = tarjetasStore.tarjetas.find(t => t._id === data.tareaId);
     if (tarea && tarea.asignadoA?._id === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Tarea iniciada
   socket.value.on('tarea-iniciada-tiempo-real', (data) => {
-    console.log(`🚀 [Tecnico][SOCKET] Tarea iniciada`);
     if (data.empleado?.id === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Tarea pausada
   socket.value.on('tarea-pausada-tiempo-real', (data) => {
-    console.log(`⏸️ [Tecnico][SOCKET] Tarea pausada`);
     if (data.empleadoId === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Tarea reanudada
   socket.value.on('tarea-reanudada-tiempo-real', (data) => {
-    console.log(`▶️ [Tecnico][SOCKET] Tarea reanudada`);
     if (data.empleadoId === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Progreso actualizado
-  socket.value.on('progreso-actualizado', (data) => {
-    console.log(`📈 [Tecnico][SOCKET] Progreso actualizado`);
+  socket.value.on('progreso-actualizado', () => {
     recargarDatos();
   });
   
-  // Tarea completada automáticamente
-  socket.value.on('tarea-completada-automaticamente', (data) => {
-    console.log(`🎉 [Tecnico][SOCKET] Tarea completada automáticamente: ${data.titulo}`);
+  socket.value.on('tarea-completada-automaticamente', () => {
     recargarDatos();
   });
   
-  // Tarea aprobada por supervisor
-  socket.value.on('tarea-aprobada-por-supervisor', (data) => {
-    console.log(`✅ [Tecnico][SOCKET] Tarea aprobada por supervisor: ${data.titulo}`);
-    recargarDatos();
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('✅ Tarea aprobada', {
-        body: `"${data.titulo}" - ${data.mensaje}`,
-        icon: '/favicon.ico'
-      });
-    }
-  });
-  
-  // Tarea calificada
   socket.value.on('tarea-calificada', (data) => {
     console.log(`⭐ [Tecnico][SOCKET] Tarea calificada: ${data.titulo} - ${data.puntaje}★`);
     recargarDatos();
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('⭐ Calificación recibida', {
-        body: `Recibiste ${data.puntaje} estrellas en: ${data.titulo}`,
-        icon: '/favicon.ico'
-      });
-    }
   });
   
-  // Tarea finalizada sin cliente
-  socket.value.on('tarea-finalizada-sin-cliente', (data) => {
-    console.log(`✅ [Tecnico][SOCKET] Tarea finalizada: ${data.titulo}`);
+  socket.value.on('tarea-auto-finalizada', () => {
     recargarDatos();
   });
   
-  // Tarea auto-finalizada
-  socket.value.on('tarea-auto-finalizada', (data) => {
-    console.log(`🤖 [Tecnico][SOCKET] Tarea auto-finalizada: ${data.titulo}`);
+  socket.value.on('tiempo-estimado-establecido', () => {
     recargarDatos();
   });
   
-  // Tiempo estimado establecido
-  socket.value.on('tiempo-estimado-establecido', (data) => {
-    console.log(`⏱️ [Tecnico][SOCKET] Tiempo estimado establecido`);
+  socket.value.on('tarea-finalizada-por-ti', (data) => {
+    console.log('✅ [Tecnico][SOCKET] Tarea finalizada por ti:', data.titulo);
     recargarDatos();
   });
   
-  // Rol actualizado
+  socket.value.on('tarea-reasignada', (data) => {
+    console.log('🔄 [Tecnico][SOCKET] Tarea reasignada:', data.titulo);
+    recargarDatos();
+  });
+  
   socket.value.on('rol-actualizado', (data) => {
-    console.log('🔄 [Tecnico][SOCKET] Rol actualizado:', data);
-    console.log(`   👤 Usuario: ${data.userId}`);
-    console.log(`   🆕 Nuevo rol: ${data.nuevoRol}`);
-    
     if (data.userId === authStore.user?._id) {
-      console.log(`👤 [Tecnico] Tu rol ha cambiado a: ${data.nuevoRol}`);
       authStore.user.rol = data.nuevoRol;
       localStorage.setItem('user', JSON.stringify(authStore.user));
-      
       alert(`✅ Tu rol ha sido actualizado a: ${data.nuevoRol}`);
-      
       setTimeout(() => {
         window.location.reload();
       }, 1500);
     }
   });
   
-  // Iniciar intervalo para actualizar el progreso visual
-  intervaloTiempoReal = setInterval(() => {
-    forceUpdate.value++;
-  }, 5000);
+  socket.value.on('notificaciones-actualizadas', (data) => {
+    console.log('🔔 [Tecnico][SOCKET] Configuración de notificaciones actualizada');
+  });
   
   console.log('✅ [Tecnico] Todos los eventos de socket configurados');
 };
 
 // ============================================================
-// FALLBACK - POLLING (si no hay sockets)
+// FALLBACK - POLLING
 // ============================================================
 
 const iniciarPollingFallback = () => {
-  console.warn('⚠️ [Tecnico] Usando polling como fallback (sin sockets)');
+  console.warn('⚠️ [Tecnico] Polling fallback cada 15s');
   pollingInterval = setInterval(async () => {
     await recargarDatos();
   }, 15000);
@@ -706,10 +1046,9 @@ const cargarTareasDisponibles = async () => {
 };
 
 const recargarDatos = async () => {
-  console.log('🔄 [Tecnico] 🔥 recargarDatos() llamado');
+  console.log('🔄 [Tecnico] recargarDatos() llamado');
   await tarjetasStore.fetchTarjetas();
   await cargarTareasDisponibles();
-  forceUpdate.value++;
   console.log('✅ [Tecnico] Datos recargados');
 };
 
@@ -802,6 +1141,19 @@ const handleTiempoEstablecido = async () => {
   await recargarDatos();
 };
 
+const handleTareaFinalizada = async () => {
+  console.log('✅ [Tecnico] Tarea finalizada desde el modal');
+  tareaParaProgreso.value = null;
+  
+  await recargarDatos();
+  
+  setTimeout(async () => {
+    console.log('🔄 [Tecnico] Recarga diferida (800ms después)...');
+    await recargarDatos();
+    console.log('✅ [Tecnico] Recarga diferida completada');
+  }, 800);
+};
+
 const logout = () => {
   authStore.logout();
 };
@@ -826,7 +1178,11 @@ onMounted(async () => {
   await recargarDatos();
   configurarSockets();
   
-  // Asegurar que el usuario se una al socket
+  // 🔔 Inicializar notificaciones (con callback "está libre")
+  await inicializarNotificaciones({
+    estaLibre: () => !tareaActiva.value
+  });
+  
   setTimeout(() => {
     const nuxtApp = useNuxtApp();
     if (nuxtApp.$socket && authStore.user?._id) {
@@ -835,6 +1191,19 @@ onMounted(async () => {
     }
   }, 1000);
   
+  // Tiempo en vivo cada 1s
+  if (intervaloTiempoReal) clearInterval(intervaloTiempoReal);
+  intervaloTiempoReal = setInterval(() => {
+    ahora.value = Date.now();
+  }, 1000);
+  
+  // Polling de respaldo
+  if (pollingInterval) clearInterval(pollingInterval);
+  pollingInterval = setInterval(async () => {
+    console.log('🔄 [Tecnico] Polling de respaldo (20s)');
+    await recargarDatos();
+  }, 20000);
+  
   console.log('✅ [Tecnico] Inicialización completada');
   console.log('========================================');
 });
@@ -842,13 +1211,24 @@ onMounted(async () => {
 onUnmounted(() => {
   console.log('🛑 [Tecnico] onUnmounted - Limpiando...');
   
-  if (intervaloTiempoReal) clearInterval(intervaloTiempoReal);
-  if (pollingInterval) clearInterval(pollingInterval);
+  if (intervaloTiempoReal) {
+    clearInterval(intervaloTiempoReal);
+    intervaloTiempoReal = null;
+  }
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+  
+  destruirNotificaciones();
   
   if (socket.value) {
+    socket.value.off('notificacion-nueva-pendiente');
+    socket.value.off('notificacion-tarea-asignada');
     socket.value.off('nueva-tarea-disponible');
     socket.value.off('tarea-tomada');
     socket.value.off('tarea-asignada');
+    socket.value.off('nueva-tarea-asignada');
     socket.value.off('estado-actualizado');
     socket.value.off('estado-general-actualizado');
     socket.value.off('tarea-iniciada-tiempo-real');
@@ -856,12 +1236,13 @@ onUnmounted(() => {
     socket.value.off('tarea-reanudada-tiempo-real');
     socket.value.off('progreso-actualizado');
     socket.value.off('tarea-completada-automaticamente');
-    socket.value.off('tarea-aprobada-por-supervisor');
     socket.value.off('tarea-calificada');
-    socket.value.off('tarea-finalizada-sin-cliente');
     socket.value.off('tarea-auto-finalizada');
     socket.value.off('tiempo-estimado-establecido');
+    socket.value.off('tarea-finalizada-por-ti');
+    socket.value.off('tarea-reasignada');
     socket.value.off('rol-actualizado');
+    socket.value.off('notificaciones-actualizadas');
   }
   
   console.log('✅ [Tecnico] Limpieza completada');

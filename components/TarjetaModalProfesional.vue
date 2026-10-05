@@ -64,11 +64,11 @@
           </div>
         </div>
         
-        <!-- Comentario del técnico -->
+        <!-- Comentario del técnico (registro de progreso) -->
         <div v-if="tarjeta.registroHoras && tarjeta.registroHoras.length > 0" 
              class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
           <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
-            💬 Comentario del técnico
+            💬 Comentarios de progreso del técnico
           </h4>
           <div v-for="(registro, index) in tarjeta.registroHoras.slice().reverse().filter(r => r.comentario)" :key="index" 
                class="border-b border-yellow-100 dark:border-yellow-800/50 last:border-0 py-2">
@@ -86,48 +86,99 @@
           </p>
         </div>
         
-        <!-- ============================================================
-             LOG DE TIEMPOS (HISTORIAL)
-             ============================================================ -->
+        <!-- Log de tiempos (historial) -->
         <div v-if="tarjeta.logTiempos && tarjeta.logTiempos.length > 0" 
-             class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-          <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
-            📋 Historial de tiempos
-          </h4>
-          <div class="max-h-60 overflow-y-auto space-y-2">
+             class="bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+          <div class="flex justify-between items-center mb-3">
+            <h4 class="font-semibold text-gray-700 dark:text-gray-300 text-sm flex items-center gap-2">
+              📋 Historial de cambios de tiempo
+            </h4>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              {{ tarjeta.logTiempos.length }} evento(s)
+            </span>
+          </div>
+          
+          <div class="max-h-80 overflow-y-auto space-y-3">
             <div v-for="(log, index) in tarjeta.logTiempos.slice().reverse()" :key="index" 
-                 class="bg-white dark:bg-gray-700 rounded-lg p-2 text-xs">
-              <div class="flex justify-between items-start">
-                <div>
-                  <span class="font-medium" :class="getTipoColor(log.tipo)">
-                    {{ getTipoLabel(log.tipo) }}
+                 class="bg-white dark:bg-gray-700 rounded-lg p-3 text-xs border border-gray-100 dark:border-gray-600 hover:shadow-sm transition">
+              
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold" :class="getTipoColor(log.tipo)">
+                    {{ getTipoIcono(log.tipo) }} {{ getTipoLabel(log.tipo) }}
                   </span>
-                  <span class="text-gray-500 dark:text-gray-400 ml-2">
+                  <span class="text-gray-400 dark:text-gray-500 text-[10px]">
                     {{ formatFechaHora(log.timestamp) }}
                   </span>
                 </div>
-                <span v-if="log.eficiencia" :class="getEficienciaColor(log.eficiencia)" class="px-2 py-0.5 rounded-full text-[10px]">
+                <span v-if="log.eficiencia && log.eficiencia !== 'esperado'" 
+                      :class="getEficienciaColor(log.eficiencia)" 
+                      class="px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap">
                   {{ getEficienciaLabel(log.eficiencia) }}
                 </span>
               </div>
-              <div class="text-gray-600 dark:text-gray-300 mt-1">
-                <span v-if="log.tiempoMinutos > 0">⏱️ {{ formatTiempo(log.tiempoMinutos) }}</span>
-                <span v-if="log.tiempoAnterior > 0" class="text-gray-400"> (anterior: {{ formatTiempo(log.tiempoAnterior) }})</span>
-                <span v-if="log.diferencia !== 0" :class="log.diferencia > 0 ? 'text-red-500' : 'text-green-500'">
-                  {{ log.diferencia > 0 ? '+' : '' }}{{ log.diferencia }} min
+              
+              <div v-if="log.tiempoMinutos > 0 || log.tiempoAnterior > 0" 
+                   class="bg-gray-50 dark:bg-gray-800 rounded-md p-2 mb-2">
+                <div class="flex items-center gap-2 flex-wrap text-[11px]">
+                  <span class="text-gray-500 dark:text-gray-400">⏱️ Tiempo estimado:</span>
+                  
+                  <template v-if="log.tiempoAnterior > 0 && log.tiempoMinutos > 0 && log.tiempoAnterior !== log.tiempoMinutos">
+                    <span class="font-medium text-gray-600 dark:text-gray-400 line-through">
+                      {{ formatTiempo(log.tiempoAnterior) }}
+                    </span>
+                    <span class="text-gray-400">→</span>
+                    <span class="font-bold" 
+                          :class="log.tiempoMinutos > log.tiempoAnterior ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'">
+                      {{ formatTiempo(log.tiempoMinutos) }}
+                    </span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                          :class="log.diferencia > 0 
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' 
+                            : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'">
+                      {{ log.diferencia > 0 ? '+' : '' }}{{ log.diferencia }} min
+                    </span>
+                  </template>
+                  
+                  <template v-else-if="log.tiempoMinutos > 0">
+                    <span class="font-bold text-blue-600 dark:text-blue-400">
+                      {{ formatTiempo(log.tiempoMinutos) }}
+                    </span>
+                  </template>
+                </div>
+              </div>
+              
+              <div v-if="log.progreso > 0" class="text-gray-600 dark:text-gray-300 mb-1">
+                📊 Progreso reportado: <strong class="text-blue-600 dark:text-blue-400">{{ log.progreso }}%</strong>
+                <span v-if="log.tiempoTrabajado > 0" class="text-gray-400 dark:text-gray-500">
+                  ({{ formatTiempo(log.tiempoTrabajado) }} trabajados)
                 </span>
               </div>
-              <div v-if="log.progreso > 0" class="text-gray-500 dark:text-gray-400">
-                📊 Progreso: {{ log.progreso }}% ({{ formatTiempo(log.tiempoTrabajado) }} trabajados)
+              
+              <div v-if="log.motivo" 
+                   class="bg-yellow-50 dark:bg-yellow-900/20 border-l-2 border-yellow-400 dark:border-yellow-600 pl-2 py-1 mt-2 rounded-r">
+                <p class="text-gray-700 dark:text-gray-300 italic text-[11px]">
+                  💬 "{{ log.motivo }}"
+                </p>
               </div>
-              <div v-if="log.motivo" class="text-gray-400 dark:text-gray-500 text-[10px]">
-                💬 {{ log.motivo }}
+              
+              <div v-if="log.por && log.por !== 'Sistema'" 
+                   class="flex items-center gap-2 mt-2 text-gray-500 dark:text-gray-400 text-[10px]">
+                <span>👤 {{ log.por }}</span>
+                <span class="px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-600">
+                  {{ getRolLabel(log.rol) }}
+                </span>
               </div>
-              <div v-if="log.por && log.por !== 'Sistema'" class="text-gray-400 dark:text-gray-500 text-[10px]">
-                👤 {{ log.por }} ({{ log.rol }})
+              <div v-else-if="log.por === 'Sistema'" 
+                   class="flex items-center gap-2 mt-2 text-gray-400 dark:text-gray-500 text-[10px]">
+                <span>🤖 Sistema (auto-cierre)</span>
               </div>
-              <div v-if="log.tecnicoAnterior" class="text-gray-400 dark:text-gray-500 text-[10px]">
-                🔄 {{ log.tecnicoAnterior }} → {{ log.tecnicoNuevo }}
+              
+              <div v-if="log.tecnicoAnterior || log.tecnicoNuevo" 
+                   class="flex items-center gap-2 mt-2 text-[11px] text-purple-600 dark:text-purple-400">
+                <span>🔄 {{ log.tecnicoAnterior || 'Sin asignar' }}</span>
+                <span>→</span>
+                <span class="font-medium">{{ log.tecnicoNuevo }}</span>
               </div>
             </div>
           </div>
@@ -157,6 +208,13 @@
                 </span>
               </p>
             </div>
+          </div>
+          
+          <div v-if="tarjeta.tiempoPausadoTotal > 0" class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-center">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              ⏸️ Tiempo pausado acumulado: 
+              <strong class="text-orange-600 dark:text-orange-400">{{ formatTiempo(tarjeta.tiempoPausadoTotal) }}</strong>
+            </p>
           </div>
         </div>
         
@@ -201,9 +259,6 @@
               <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 💡 Ejemplos: 2h 30min, 1h 45min, 90min (solo minutos)
               </p>
-              <p v-if="tiempoEstimadoHoras > 0 && tiempoEstimadoMinutos > 59" class="text-xs text-red-500 dark:text-red-400 mt-1">
-                ⚠️ Cuando hay horas, los minutos no pueden ser mayores a 59
-              </p>
             </div>
             <button
               @click="guardarTiempoEstimado"
@@ -220,10 +275,29 @@
         </div>
         
         <!-- ============================================================
+             CALIFICACIÓN (solo lectura si ya está calificada)
+             ============================================================ -->
+        <div v-if="tarjeta.calificacion?.puntaje" 
+             class="bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
+          <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
+            ⭐ Calificación del cliente
+          </h4>
+          <div class="flex items-center gap-2">
+            <span class="text-yellow-500 text-2xl">{{ '★'.repeat(tarjeta.calificacion.puntaje) }}{{ '☆'.repeat(5 - tarjeta.calificacion.puntaje) }}</span>
+            <span class="font-bold text-gray-700 dark:text-gray-300">{{ tarjeta.calificacion.puntaje }}/5</span>
+          </div>
+          <p v-if="tarjeta.calificacion.comentario" class="text-sm text-gray-600 dark:text-gray-400 italic mt-2">
+            "{{ tarjeta.calificacion.comentario }}"
+          </p>
+          <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+            {{ formatFechaHora(tarjeta.calificacion.fecha) }}
+          </p>
+        </div>
+        
+        <!-- ============================================================
              BOTONES DE ACCIÓN
              ============================================================ -->
         <div class="flex flex-wrap gap-3 pt-3">
-          <!-- Auto-asignarse -->
           <button 
             v-if="puedeAutoAsignar" 
             @click="autoAsignar" 
@@ -232,7 +306,6 @@
             🎯 Auto-asignarme
           </button>
           
-          <!-- Asignar por supervisor -->
           <button 
             v-if="puedeAsignarJefe" 
             @click="abrirAsignarEmpleado" 
@@ -241,7 +314,6 @@
             👥 Asignar a técnico
           </button>
           
-          <!-- 🔥 DEVOLVER TAREA (solo técnico, tarea sin tiempo) -->
           <button 
             v-if="puedeDevolver" 
             @click="devolverTarea" 
@@ -250,7 +322,6 @@
             ↩️ Devolver tarea
           </button>
           
-          <!-- 🔥 REASIGNAR (solo supervisor) -->
           <button 
             v-if="puedeReasignar" 
             @click="abrirReasignarModal" 
@@ -259,7 +330,6 @@
             👥 Reasignar
           </button>
           
-          <!-- Iniciar tarea -->
           <button 
             v-if="puedeIniciar" 
             @click="iniciarTarea" 
@@ -269,7 +339,6 @@
             {{ tiempoEstimadoActual === 0 ? '⚠️ Guarda el tiempo primero' : '🚀 Iniciar tarea' }}
           </button>
           
-          <!-- Reanudar -->
           <button 
             v-if="puedeReanudar" 
             @click="reanudarTarea" 
@@ -278,7 +347,6 @@
             ▶️ Reanudar
           </button>
           
-          <!-- Pausar -->
           <button 
             v-if="puedePausar" 
             @click="pausarTarea" 
@@ -287,37 +355,9 @@
             ⏸️ Pausar
           </button>
           
-          <!-- Registrar progreso -->
-          <button 
-            v-if="puedeRegistrarProgreso" 
-            @click="abrirRegistrarProgreso" 
-            class="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2.5 rounded-lg hover:from-purple-600 hover:to-purple-700 transition font-medium"
-          >
-            📊 Registrar progreso
-          </button>
-          
-          <!-- Aprobar tarea (solo supervisor) -->
-          <button 
-            v-if="puedeAprobar" 
-            @click="aprobarTarea" 
-            class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 rounded-lg hover:from-green-600 hover:to-green-700 transition font-medium"
-          >
-            ✅ Aprobar tarea
-          </button>
-          
-          <!-- Calificar (solo usuario) -->
-          <button 
-            v-if="puedeCalificar" 
-            @click="abrirCalificar" 
-            class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2.5 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition font-medium"
-          >
-            ⭐ Calificar servicio
-          </button>
-          
-          <!-- Finalizar tarea (técnico, con tiempo estimado) -->
           <button 
             v-if="puedeFinalizar" 
-            @click="finalizarTarea" 
+            @click="abrirModalFinalizar" 
             class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2.5 rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition font-medium"
           >
             ✅ Finalizar tarea
@@ -365,7 +405,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'update', 'calificar']);
+const emit = defineEmits(['close', 'update']);
 
 const authStore = useAuthStore();
 const tarjetasStore = useTarjetasStore();
@@ -392,7 +432,8 @@ const formatFechaHora = (date) => {
 };
 
 const formatTiempo = (minutos) => {
-  if (!minutos || minutos === 0) return '0 min';
+  if (!minutos && minutos !== 0) return '0 min';
+  if (minutos === 0) return '0 min';
   const horas = Math.floor(minutos / 60);
   const mins = minutos % 60;
   if (horas === 0) return `${mins} min`;
@@ -400,19 +441,39 @@ const formatTiempo = (minutos) => {
   return `${horas}h ${mins}min`;
 };
 
+// ============================================================
+// HELPERS PARA EL HISTORIAL
+// ============================================================
+const getTipoIcono = (tipo) => {
+  const map = {
+    'sugerido_supervisor': '📌',
+    'estimado_tecnico': '⏱️',
+    'recalculado_progreso': '🔄',
+    'tarea_iniciada': '▶️',
+    'tarea_pausada': '⏸️',
+    'tarea_reanudada': '▶️',
+    'tarea_finalizada': '✅',
+    'tarea_auto_finalizada': '🤖',
+    'tarea_devuelta': '↩️',
+    'tarea_reasignada': '🔄',
+    'tiempo_estimado_tecnico_reasignacion': '⏱️'
+  };
+  return map[tipo] || '📝';
+};
+
 const getTipoLabel = (tipo) => {
   const map = {
-    'sugerido_supervisor': '📌 Sugerido por supervisor',
-    'estimado_tecnico': '⏱️ Estimado por técnico',
-    'recalculado_progreso': '🔄 Recalculado por progreso',
-    'tarea_iniciada': '▶️ Tarea iniciada',
-    'tarea_pausada': '⏸️ Tarea pausada',
-    'tarea_reanudada': '▶️ Tarea reanudada',
-    'tarea_finalizada': '✅ Tarea finalizada',
-    'tarea_auto_finalizada': '🤖 Auto-finalizada',
-    'tarea_devuelta': '↩️ Tarea devuelta',
-    'tarea_reasignada': '🔄 Tarea reasignada',
-    'tiempo_estimado_tecnico_reasignacion': '⏱️ Estimado (reasignación)'
+    'sugerido_supervisor': 'Sugerido por supervisor',
+    'estimado_tecnico': 'Estimado por técnico',
+    'recalculado_progreso': 'Recalculado por progreso',
+    'tarea_iniciada': 'Tarea iniciada',
+    'tarea_pausada': 'Tarea pausada',
+    'tarea_reanudada': 'Tarea reanudada',
+    'tarea_finalizada': 'Tarea finalizada',
+    'tarea_auto_finalizada': 'Auto-finalizada',
+    'tarea_devuelta': 'Tarea devuelta',
+    'tarea_reasignada': 'Tarea reasignada',
+    'tiempo_estimado_tecnico_reasignacion': 'Estimado (reasignación)'
   };
   return map[tipo] || tipo;
 };
@@ -453,6 +514,16 @@ const getEficienciaColor = (eficiencia) => {
   return map[eficiencia] || 'bg-gray-100 text-gray-700';
 };
 
+const getRolLabel = (rol) => {
+  const map = {
+    'supervisor': 'Supervisor',
+    'tecnico': 'Técnico',
+    'usuario': 'Usuario',
+    'Sistema': 'Sistema'
+  };
+  return map[rol] || rol;
+};
+
 // ============================================================
 // COMPUTED - PERMISOS
 // ============================================================
@@ -472,7 +543,6 @@ const puedeAsignarJefe = computed(() => {
          props.tarjeta.estado === 'pendiente';
 });
 
-// 🔥 Puede devolver: técnico asignado, tarea en progreso, SIN tiempo estimado, 0% progreso
 const puedeDevolver = computed(() => {
   return esAsignadoAMi.value && 
          props.tarjeta.estado === 'en_progreso' && 
@@ -480,19 +550,16 @@ const puedeDevolver = computed(() => {
          props.tarjeta.porcentajeCompletado === 0;
 });
 
-// 🔥 Puede reasignar: supervisor, tarea en progreso o pendiente, CON técnico asignado
 const puedeReasignar = computed(() => {
   return authStore.isSupervisor && 
-         (props.tarjeta.estado === 'en_progreso' || props.tarjeta.estado === 'pendiente') &&
+         props.tarjeta.estado === 'en_progreso' &&
          props.tarjeta.asignadoA;
 });
 
-// 🔥 Puede finalizar: técnico asignado, tarea en progreso, CON tiempo estimado, >0% progreso
 const puedeFinalizar = computed(() => {
   return esAsignadoAMi.value && 
          props.tarjeta.estado === 'en_progreso' && 
-         props.tarjeta.tiempoEstimadoEmpleado > 0 &&
-         props.tarjeta.porcentajeCompletado > 0;
+         props.tarjeta.tiempoEstimadoEmpleado > 0;
 });
 
 const puedeIniciar = computed(() => {
@@ -513,24 +580,6 @@ const puedePausar = computed(() => {
   return esAsignadoAMi.value && 
          props.tarjeta.estado === 'en_progreso' && 
          props.tarjeta.estadoProgreso === 'activa';
-});
-
-const puedeRegistrarProgreso = computed(() => {
-  return esAsignadoAMi.value && 
-         props.tarjeta.estado === 'en_progreso' && 
-         props.tarjeta.tiempoEstimadoEmpleado > 0 &&
-         (props.tarjeta.estadoProgreso === 'activa' || props.tarjeta.tiempoAcumulado > 0);
-});
-
-const puedeAprobar = computed(() => {
-  return authStore.isSupervisor && props.tarjeta.estado === 'revision_jefe';
-});
-
-const puedeCalificar = computed(() => {
-  return authStore.isUsuario && 
-         props.tarjeta.estado === 'revision_cliente' && 
-         !props.tarjeta.calificacion &&
-         props.tarjeta.clienteInfo?.userId === authStore.user?._id;
 });
 
 // ============================================================
@@ -557,9 +606,7 @@ const calcularTiempoTrabajado = () => {
   return tiempo;
 };
 
-const tiempoRealTrabajado = computed(() => {
-  return calcularTiempoTrabajado();
-});
+const tiempoRealTrabajado = computed(() => calcularTiempoTrabajado());
 
 const tiempoRealTrabajadoFormateado = computed(() => {
   return formatTiempo(tiempoRealTrabajado.value);
@@ -571,9 +618,7 @@ const tiempoTotalMinutos = computed(() => {
   return (horas * 60) + minutos;
 });
 
-const tiempoValido = computed(() => {
-  return tiempoTotalMinutos.value > 0;
-});
+const tiempoValido = computed(() => tiempoTotalMinutos.value > 0);
 
 // ============================================================
 // COMPUTED - ESTILOS
@@ -588,9 +633,9 @@ const prioridadMap = {
 const estadoMap = {
   pendiente: { texto: '📋 Pendiente', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
   en_progreso: { texto: '⚙️ En Progreso', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
-  revision_jefe: { texto: '👔 Revisión Supervisor', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  revision_supervisor: { texto: '👔 Revisión Supervisor', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
   revision_cliente: { texto: '⭐ Revisión Usuario', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
-  finalizada: { texto: '🏁 Finalizada', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' }
+  finalizada: { texto: '✅ Finalizada', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' }
 };
 
 const prioridadTexto = computed(() => prioridadMap[props.tarjeta.prioridad]?.texto || 'Media');
@@ -656,8 +701,6 @@ const guardarTiempoEstimado = async () => {
 };
 
 const iniciarTarea = async () => {
-  console.log('🚀 [INICIAR-TAREA] Iniciando tarea...');
-  
   if (!props.tarjeta.tiempoEstimadoEmpleado || props.tarjeta.tiempoEstimadoEmpleado === 0) {
     alert('⚠️ Debes establecer un tiempo estimado antes de iniciar la tarea.');
     return;
@@ -669,14 +712,7 @@ const iniciarTarea = async () => {
     
     const response = await $fetch(url, {
       method: 'PUT',
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: { 
-        tiempoEstimadoHoras: 0, 
-        tiempoEstimadoMinutos: 0 
-      }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     
     if (response._id) {
@@ -745,7 +781,7 @@ const handleAsignado = () => {
   emit('close');
 };
 
-const abrirRegistrarProgreso = () => {
+const abrirModalFinalizar = () => {
   modalRegistrarProgreso.value = true;
 };
 
@@ -754,29 +790,6 @@ const handleUpdated = () => {
   emit('update');
   emit('close');
 };
-
-const aprobarTarea = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    await $fetch(`${config.public.apiBase}/tarjetas/${props.tarjeta._id}/aprobar-jefe`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    alert('✅ Tarea aprobada');
-    emit('update');
-    emit('close');
-  } catch (error) {
-    alert('Error al aprobar');
-  }
-};
-
-const abrirCalificar = () => {
-  emit('calificar', props.tarjeta);
-};
-
-// ============================================================
-// 🔥 NUEVAS ACCIONES: DEVOLVER, REASIGNAR, FINALIZAR
-// ============================================================
 
 const devolverTarea = async () => {
   if (!confirm('¿Estás seguro de que quieres devolver esta tarea? Se pondrá disponible para otros técnicos.')) {
@@ -805,37 +818,18 @@ const handleReasignado = () => {
   emit('close');
 };
 
-const finalizarTarea = async () => {
-  if (!confirm('¿Estás seguro de que quieres finalizar esta tarea? Se enviará a revisión del supervisor.')) {
-    return;
-  }
-  
-  try {
-    const comentario = prompt('Comentario sobre la finalización (opcional):');
-    await tarjetasStore.finalizarTarea(props.tarjeta._id, comentario || '');
-    alert('✅ Tarea finalizada exitosamente');
-    emit('update');
-    emit('close');
-  } catch (error) {
-    console.error('❌ Error finalizando tarea:', error);
-    alert('Error al finalizar la tarea: ' + (error.message || 'Error desconocido'));
-  }
-};
-
 // ============================================================
 // LIFECYCLE
 // ============================================================
 const cargarTiempo = () => {
-  console.log('📋 [TarjetaModalProfesional] Cargando tiempo...');
-  
   if (props.tarjeta.tiempoEstimadoEmpleado > 0) {
     const horas = Math.floor(props.tarjeta.tiempoEstimadoEmpleado / 60);
     const minutos = props.tarjeta.tiempoEstimadoEmpleado % 60;
     tiempoEstimadoHoras.value = horas;
     tiempoEstimadoMinutos.value = minutos;
-  } else if (props.tarjeta.tiempoSugeridoJefe > 0) {
-    const horas = Math.floor(props.tarjeta.tiempoSugeridoJefe / 60);
-    const minutos = props.tarjeta.tiempoSugeridoJefe % 60;
+  } else if (props.tarjeta.tiempoSugeridoSupervisor > 0) {
+    const horas = Math.floor(props.tarjeta.tiempoSugeridoSupervisor / 60);
+    const minutos = props.tarjeta.tiempoSugeridoSupervisor % 60;
     tiempoEstimadoHoras.value = horas;
     tiempoEstimadoMinutos.value = minutos;
   } else {

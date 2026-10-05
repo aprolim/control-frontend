@@ -2,16 +2,38 @@
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
+  
+  <!-- 🔔 Contenedor global de notificaciones toast -->
+  <NotificacionToast
+    v-if="notificacionesActivas.length > 0"
+    :notificaciones="notificacionesActivas"
+    @cerrar="cerrarNotificacion"
+  />
 </template>
 
 <script setup>
 import { useAuthStore } from '~/stores/auth';
+import { useNotificaciones } from '~/composables/useNotificaciones';
 import { useNuxtApp } from '#app';
 
 const authStore = useAuthStore();
 
+// 🔥 Inicializar composable global de notificaciones
+const {
+  notificacionesActivas,
+  cerrarNotificacion,
+  inicializar: inicializarNotificaciones,
+  destruir: destruirNotificaciones,
+  actualizarConfiguracion
+} = useNotificaciones();
+
 onMounted(() => {
   authStore.loadFromStorage();
+  
+  // 🔥 Inicializar sistema de notificaciones
+  if (authStore.user) {
+    inicializarNotificaciones();
+  }
   
   // Configurar escucha global de cambios de rol
   const nuxtApp = useNuxtApp();
@@ -28,23 +50,17 @@ onMounted(() => {
       console.log(`   👤 Usuario actual: ${authStore.user?._id}`);
       console.log('========================================');
       
-      // Verificar si el cambio de rol es para el usuario actual
       if (data.userId === authStore.user?._id) {
         console.log(`🎯 [App] ¡Este cambio de rol es para ti!`);
         console.log(`   Rol anterior: ${authStore.user?.rol}`);
         console.log(`   Nuevo rol: ${data.nuevoRol}`);
         
-        // Actualizar el store y localStorage
         authStore.user.rol = data.nuevoRol;
         localStorage.setItem('user', JSON.stringify(authStore.user));
         
-        // Mostrar notificación
         alert(`✅ Tu rol ha sido actualizado a: ${data.nuevoRol}. La página se recargará.`);
         
-        // 🔥 FORZAR RECARGA COMPLETA CON EL NUEVO ROL
-        // Usamos window.location.href para asegurar una recarga completa
         setTimeout(() => {
-          // Determinar la ruta según el nuevo rol
           const roleRoutes = {
             'supervisor': '/supervisor',
             'tecnico': '/tecnico',
@@ -56,6 +72,18 @@ onMounted(() => {
         }, 1500);
       }
     });
+    
+    // 🔥 Escuchar cambios de configuración de notificaciones
+    socket.on('notificaciones-actualizadas', (data) => {
+      console.log('🔔 [App] Configuración de notificaciones actualizada:', data);
+      if (data.configuracion) {
+        actualizarConfiguracion(data.configuracion);
+      }
+    });
   }
+});
+
+onUnmounted(() => {
+  destruirNotificaciones();
 });
 </script>

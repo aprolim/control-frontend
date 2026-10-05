@@ -1,96 +1,118 @@
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
-      <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">📊 Registrar progreso</h3>
-        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+      
+      <!-- Header sticky -->
+      <div class="flex justify-between items-center p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-900/20 dark:to-gray-800 rounded-t-lg flex-shrink-0">
+        <h3 class="text-base sm:text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+          <span class="text-xl sm:text-2xl">✅</span>
+          Finalizar tarea
+        </h3>
+        <button 
+          @click="$emit('close')" 
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition"
+        >
+          ✕
+        </button>
       </div>
       
-      <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
-        <!-- Información de la tarea -->
-        <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+      <!-- Body con scroll interno -->
+      <form @submit.prevent="handleSubmit" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        
+        <!-- Info de la tarea -->
+        <div class="bg-emerald-50 dark:bg-emerald-900/30 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800">
           <p class="text-sm font-medium text-gray-800 dark:text-white">{{ tarjeta.titulo }}</p>
-          <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-            <span>Progreso actual: <strong class="text-blue-600 dark:text-blue-400">{{ progresoInicial }}%</strong></span>
-            <span>Tiempo estimado: <strong>{{ formatTiempo(tarjeta.tiempoEstimadoEmpleado) }}</strong></span>
-          </div>
-          <div class="text-xs text-green-600 dark:text-green-400 mt-1">
-            ⏱️ Tiempo trabajado: <strong>{{ tiempoTranscurridoFormateado }}</strong>
-            <span class="text-gray-400 text-[10px] block">(Calculado automáticamente)</span>
-          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{{ tarjeta.descripcion || 'Sin descripción' }}</p>
         </div>
         
-        <!-- SOLO PORCENTAJE DE AVANCE -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            📊 Nuevo porcentaje completado <span class="text-red-500">*</span>
-          </label>
-          <input
-            v-model.number="form.porcentajeAvance"
-            type="range"
-            :min="progresoInicial"
-            max="100"
-            step="5"
-            class="w-full"
-          />
-          <div class="flex justify-between items-center mt-1">
-            <span class="text-xs text-gray-400 dark:text-gray-500">Inicio: {{ progresoInicial }}%</span>
-            <span class="text-center text-sm font-bold" :class="porcentajeColor">
-              {{ form.porcentajeAvance }}%
+        <!-- RESUMEN DE TIEMPO -->
+        <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h4 class="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+            📊 Resumen de tiempo
+          </h4>
+          
+          <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-2 sm:p-3 text-center border border-gray-200 dark:border-gray-700">
+              <span class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 block mb-1">⏱️ Trabajado</span>
+              <span class="font-bold text-emerald-600 dark:text-emerald-400 text-base sm:text-lg font-mono">
+                {{ formatTiempo(tiempoTranscurridoReal) }}
+              </span>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-2 sm:p-3 text-center border border-gray-200 dark:border-gray-700">
+              <span class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 block mb-1">🎯 Estimado</span>
+              <span class="font-bold text-blue-600 dark:text-blue-400 text-base sm:text-lg font-mono">
+                {{ tiempoEstimado > 0 ? formatTiempo(tiempoEstimado) : 'Sin definir' }}
+              </span>
+            </div>
+          </div>
+          
+          <div v-if="tiempoEstimado > 0" 
+               class="text-[11px] sm:text-xs p-2 rounded-lg text-center font-medium"
+               :class="tiempoTranscurridoReal <= tiempoEstimado 
+                 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                 : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'">
+            <span v-if="tiempoTranscurridoReal <= tiempoEstimado">
+              ✅ Terminaste {{ formatTiempo(tiempoEstimado - tiempoTranscurridoReal) }} antes
             </span>
-            <span class="text-xs text-gray-400 dark:text-gray-500">Meta: 100%</span>
+            <span v-else>
+              ⚠️ Excediste por {{ formatTiempo(tiempoTranscurridoReal - tiempoEstimado) }}
+            </span>
           </div>
         </div>
         
-        <!-- COMENTARIO (OBLIGATORIO) -->
+        <!-- COMENTARIO OBLIGATORIO -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            💬 Comentario <span class="text-red-500">*</span>
+          <label class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            💬 Comentario de finalización <span class="text-red-500">*</span>
           </label>
           <textarea
             v-model="form.comentario"
             rows="3"
             required
-            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition"
+            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white transition text-sm resize-none"
             :class="comentarioError 
               ? 'border-red-400 dark:border-red-500 focus:ring-red-500 focus:border-red-500' 
               : 'border-gray-300 dark:border-gray-600'"
-            placeholder="Explica brevemente el avance realizado, si la tarea se adelantó o retrasó, y por qué..."
+            placeholder="Explica brevemente cómo se desarrolló la tarea..."
             @input="comentarioError = false"
           ></textarea>
-          <p v-if="comentarioError" class="text-xs text-red-500 dark:text-red-400 mt-1">
-            ⚠️ El comentario es obligatorio para que el supervisor entienda el contexto del avance.
+          <p v-if="comentarioError" class="text-[11px] sm:text-xs text-red-500 dark:text-red-400 mt-1">
+            ⚠️ El comentario es obligatorio (mínimo 5 caracteres).
           </p>
-          <p v-else class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Obligatorio: el supervisor necesita saber por qué la tarea se adelantó o retrasó.
+          <p v-else class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
+            El supervisor leerá este comentario al revisar la tarea.
           </p>
         </div>
         
-        <!-- BOTONES -->
-        <div class="flex gap-2 pt-2">
-          <button
-            type="submit"
-            :disabled="loading || !comentarioValido"
-            class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition dark:bg-green-700 dark:hover:bg-green-800"
-          >
-            {{ loading ? 'Guardando...' : '📊 Registrar avance' }}
-          </button>
-          <button
-            type="button"
-            @click="$emit('close')"
-            class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-          >
-            Cancelar
-          </button>
-        </div>
-        
-        <!-- Mensaje de advertencia -->
-        <div v-if="form.porcentajeAvance >= 100" class="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
-          <p class="text-sm text-green-700 dark:text-green-300 text-center">
-            🎉 ¡Tarea completada! Se enviará a revisión del supervisor.
+        <!-- ADVERTENCIA -->
+        <div class="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-2 sm:p-3">
+          <p class="text-[11px] sm:text-xs text-yellow-800 dark:text-yellow-200">
+            ⚠️ <strong>Esta acción no se puede deshacer.</strong> La tarea se marcará como <strong>100% completada</strong> y se enviará a revisión del supervisor.
           </p>
         </div>
+        
       </form>
+      
+      <!-- Footer sticky con botones -->
+      <div class="flex gap-2 p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg flex-shrink-0">
+        <button
+          type="button"
+          @click="handleSubmit"
+          :disabled="loading || !comentarioValido"
+          class="flex-1 bg-emerald-600 text-white py-2 sm:py-2.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium flex items-center justify-center gap-2 text-sm"
+        >
+          <span v-if="loading" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          {{ loading ? 'Finalizando...' : '✅ Confirmar' }}
+        </button>
+        <button
+          type="button"
+          @click="$emit('close')"
+          class="flex-1 bg-gray-200 text-gray-700 py-2 sm:py-2.5 rounded-lg hover:bg-gray-300 transition dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 font-medium text-sm"
+        >
+          Cancelar
+        </button>
+      </div>
+      
     </div>
   </div>
 </template>
@@ -107,26 +129,23 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated']);
 
-console.log('📊 [RegistrarProgresoModal] Componente cargado');
+console.log('✅ [RegistrarProgresoModal] Modal de finalización cargado');
 
 const tarjetasStore = useTarjetasStore();
 const loading = ref(false);
 const comentarioError = ref(false);
 
-// 🔥 Progreso inicial: se fija al montar el componente
-const progresoInicial = ref(props.tarjeta.porcentajeCompletado || 0);
-
 const form = ref({
-  porcentajeAvance: props.tarjeta.porcentajeCompletado || 0,
   comentario: ''
 });
 
-// 🔥 Validación del comentario: no vacío y con al menos 5 caracteres
 const comentarioValido = computed(() => {
   return form.value.comentario && form.value.comentario.trim().length >= 5;
 });
 
-const tiempoTranscurridoFormateado = computed(() => {
+const tiempoEstimado = computed(() => props.tarjeta.tiempoEstimadoEmpleado || 0);
+
+const tiempoTranscurridoReal = computed(() => {
   let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
   
   if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
@@ -136,13 +155,7 @@ const tiempoTranscurridoFormateado = computed(() => {
     tiempoTotal += minutosDesdeReanudacion;
   }
   
-  return formatTiempo(tiempoTotal);
-});
-
-const porcentajeColor = computed(() => {
-  if (form.value.porcentajeAvance >= 100) return 'text-green-600 dark:text-green-400';
-  if (form.value.porcentajeAvance >= 50) return 'text-blue-600 dark:text-blue-400';
-  return 'text-gray-600 dark:text-gray-400';
+  return tiempoTotal;
 });
 
 const formatTiempo = (minutos) => {
@@ -155,41 +168,41 @@ const formatTiempo = (minutos) => {
 };
 
 const handleSubmit = async () => {
-  // 🔥 Validar comentario
   if (!comentarioValido.value) {
     comentarioError.value = true;
     return;
   }
   
-  console.log('📤 [RegistrarProgresoModal] Enviando progreso...');
-  console.log(`   📊 Progreso: ${form.value.porcentajeAvance}%`);
+  console.log('✅ [RegistrarProgresoModal] Finalizando tarea...');
+  console.log(`   📊 Se enviará 100% de progreso`);
+  console.log(`   ⏱️ Tiempo trabajado: ${formatTiempo(tiempoTranscurridoReal.value)}`);
   console.log(`   💬 Comentario: ${form.value.comentario}`);
+  
+  const confirmacion = confirm(
+    `¿Confirmar la finalización de la tarea?\n\n` +
+    `⏱️ Tiempo trabajado: ${formatTiempo(tiempoTranscurridoReal.value)}\n` +
+    (tiempoEstimado.value > 0 ? `🎯 Tiempo estimado: ${formatTiempo(tiempoEstimado.value)}\n` : '') +
+    `\nLa tarea se marcará como 100% completada y se enviará a revisión.`
+  );
+  
+  if (!confirmacion) return;
   
   loading.value = true;
   try {
     const dataToSend = {
-      porcentajeAvance: form.value.porcentajeAvance,
+      porcentajeAvance: 100,
       comentario: form.value.comentario.trim()
     };
     
-    console.log('📦 Datos enviados:', dataToSend);
-    
     await tarjetasStore.registrarProgreso(props.tarjeta._id, dataToSend);
+    alert('✅ Tarea finalizada exitosamente. Se envió a revisión del supervisor.');
     emit('updated');
     emit('close');
   } catch (error) {
-    console.error('❌ Error registrando progreso:', error);
-    console.error('   Detalles:', error.data);
-    alert('Error al registrar el progreso: ' + (error.message || error.data?.message || 'Error desconocido'));
+    console.error('❌ Error finalizando:', error);
+    alert('Error al finalizar: ' + (error.message || error.data?.message || 'Error desconocido'));
   } finally {
     loading.value = false;
   }
 };
-
-// 🔥 Asegurar que el slider arranque en el progreso actual al montar
-onMounted(() => {
-  progresoInicial.value = props.tarjeta.porcentajeCompletado || 0;
-  form.value.porcentajeAvance = progresoInicial.value;
-  console.log(`📊 [RegistrarProgresoModal] Slider inicializado en ${progresoInicial.value}%`);
-});
 </script>

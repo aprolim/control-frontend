@@ -27,41 +27,10 @@
             </option>
           </select>
           
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Tiempo sugerido <span class="text-gray-400 text-xs">(opcional - solo referencia)</span>
-            </label>
-            <div class="flex gap-2">
-              <div class="flex-1">
-                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Horas (0-23)</label>
-                <input
-                  v-model.number="tiempoSugeridoHoras"
-                  type="number"
-                  step="1"
-                  min="0"
-                  max="23"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  placeholder="0"
-                  @input="validarHorasSugeridas"
-                />
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Horas (0-23)</p>
-              </div>
-              <div class="flex-1">
-                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Minutos (0-59)</label>
-                <input
-                  v-model.number="tiempoSugeridoMinutos"
-                  type="number"
-                  step="1"
-                  min="0"
-                  max="59"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  placeholder="0"
-                  @input="validarMinutosSugeridos"
-                />
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Minutos (0-59)</p>
-              </div>
-            </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">El técnico verá esta sugerencia</p>
+          <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
+            <p class="text-sm text-blue-700 dark:text-blue-300">
+              ⏱️ El técnico establecerá el tiempo estimado cuando inicie la tarea.
+            </p>
           </div>
           
           <div class="flex gap-2">
@@ -106,22 +75,6 @@ const tecnicos = ref([]);
 const tecnicoId = ref('');
 const loading = ref(false);
 const cargandoTecnicos = ref(false);
-const tiempoSugeridoHoras = ref(0);
-const tiempoSugeridoMinutos = ref(0);
-
-const validarHorasSugeridas = () => {
-  let horas = parseInt(tiempoSugeridoHoras.value);
-  if (isNaN(horas)) horas = 0;
-  horas = Math.min(23, Math.max(0, horas));
-  tiempoSugeridoHoras.value = horas;
-};
-
-const validarMinutosSugeridos = () => {
-  let minutos = parseInt(tiempoSugeridoMinutos.value);
-  if (isNaN(minutos)) minutos = 0;
-  minutos = Math.min(59, Math.max(0, minutos));
-  tiempoSugeridoMinutos.value = minutos;
-};
 
 const cargarTecnicos = async () => {
   console.log('📤 [AsignarEmpleadoModal] Cargando técnicos...');
@@ -158,7 +111,7 @@ const cargarTecnicos = async () => {
 };
 
 // ============================================================
-// 🔥 CORREGIDO: asignarPorSupervisor en lugar de asignarPorJefe
+// 🔥 ASIGNAR: ya no se envía tiempo sugerido
 // ============================================================
 const asignar = async () => {
   if (!tecnicoId.value) {
@@ -170,16 +123,15 @@ const asignar = async () => {
   console.log('📤 [AsignarEmpleadoModal] Asignando tarea...');
   console.log(`   - Técnico ID: ${tecnicoId.value}`);
   console.log(`   - Tarea ID: ${props.tarjeta._id}`);
-  console.log(`   - Tiempo sugerido: ${tiempoSugeridoHoras.value}h ${tiempoSugeridoMinutos.value}min`);
+  console.log(`   - Sin tiempo sugerido (el técnico lo establecerá al iniciar)`);
   
   loading.value = true;
   try {
-    // 🔥 CAMBIADO: asignarPorSupervisor en lugar de asignarPorJefe
     const resultado = await tarjetasStore.asignarPorSupervisor(
       props.tarjeta._id, 
       tecnicoId.value,
-      tiempoSugeridoHoras.value,
-      tiempoSugeridoMinutos.value
+      0,  // tiempoSugeridoHoras
+      0   // tiempoSugeridoMinutos
     );
     
     console.log('✅ Tarea asignada exitosamente:', resultado);

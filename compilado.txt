@@ -124,9 +124,9 @@ export default defineNuxtConfig({
   
   runtimeConfig: {
     public: {
-      // 🔥 CORREGIDO: Puerto 3000
-      apiBase: process.env.API_BASE || 'http://172.16.30.212:5000/api',
-      wsUrl: process.env.WS_URL || 'http://172.16.30.212:5000'
+      // 🔥 URLs del backend
+      apiBase: process.env.API_BASE || 'http://172.29.240.1:5000/api',
+      wsUrl: process.env.WS_URL || 'http://172.29.240.1:5000'
     }
   },
   
@@ -155,8 +155,8 @@ export default defineNuxtConfig({
   
   vite: {
     server: {
-      ws: false,
-      hmr: false,
+      // 🔥 CORRECCIÓN: Se eliminaron hmr: false y ws: false
+      // que causaban el error ERR_CONNECTION_REFUSED en el puerto 24678
       fs: {
         strict: false
       }
@@ -203,14 +203,14 @@ package.json
     "@nuxtjs/color-mode": "^4.0.0",
     "@nuxtjs/tailwindcss": "^6.11.3",
     "@pinia/nuxt": "^0.5.1",
-    "@vueuse/nuxt": "^10.7.2",
+    "@vueuse/nuxt": "^15.0.0",
     "chart.js": "^4.4.1",
     "dayjs": "^1.11.10",
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
-    "nuxt": "3.10.3",
+    "nuxt": "^4.5.2",
     "pinia": "^2.1.7",
     "socket.io-client": "^4.8.3",
     "vue-chartjs": "^5.2.0",
@@ -254,28 +254,6 @@ export default {
   },
   plugins: [],
 } 
-================================= 
-vite.config.js 
-================================= 
- 
-import { defineConfig } from 'vite';
-
-export default defineConfig({
-  server: {
-    port: 3000,
-    strictPort: false,
-    hmr: false,
-    watch: {
-      usePolling: false
-    }
-  },
-  optimizeDeps: {
-    include: ['chart.js', 'vue-chartjs', 'socket.io-client']
-  },
-  build: {
-    sourcemap: false
-  }
-}); 
 ================================= 
 assets\css\main.css 
 ================================= 
@@ -1242,27 +1220,44 @@ components\EstadoEmpleados.vue
 <template>
   <div class="estado-empleados bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-bold text-gray-800 dark:text-white">👥 Estado de Técnicos en Tiempo Real</h2>
+      <div class="flex items-center gap-3">
+        <h2 class="text-xl font-bold text-gray-800 dark:text-white">👥 Estado de Técnicos en Tiempo Real</h2>
+        <span 
+          v-if="socketConectado" 
+          class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 flex items-center gap-1"
+          title="Actualizaciones en tiempo real activas"
+        >
+          <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+          En vivo
+        </span>
+        <span 
+          v-else 
+          class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 flex items-center gap-1"
+          title="Socket desconectado - usando polling"
+        >
+          ⚠️ Sin conexión
+        </span>
+      </div>
       <button 
         @click="refrescar" 
-        :disabled="refrescando"
+        :disabled="empleadosStore.cargando"
         class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm flex items-center gap-1"
       >
-        <span>🔄</span> {{ refrescando ? 'Actualizando...' : 'Actualizar' }}
+        <span>🔄</span> {{ empleadosStore.cargando ? 'Actualizando...' : 'Actualizar' }}
       </button>
     </div>
     
-    <div v-if="cargando" class="text-center py-8">
+    <div v-if="empleadosStore.cargando && empleadosStore.estadosTecnicos.length === 0" class="text-center py-8">
       <div class="animate-pulse text-gray-500 dark:text-gray-400">Cargando estado de técnicos...</div>
     </div>
     
-    <div v-else-if="estadosTecnicos.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+    <div v-else-if="empleadosStore.estadosTecnicos.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
       No hay técnicos registrados
     </div>
     
     <div v-else class="space-y-3">
       <div 
-        v-for="tec in estadosTecnicos" 
+        v-for="tec in empleadosStore.estadosTecnicos" 
         :key="tec.empleadoId"
         class="border rounded-lg p-4 hover:shadow-md transition"
         :class="[
@@ -1291,27 +1286,23 @@ components\EstadoEmpleados.vue
             </div>
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ tec.empleadoEmail }}</p>
           </div>
-          <div v-if="tec.tarea && tec.tarea.tiempoRestante !== null" class="text-right">
+          <div v-if="tec.tarea && tec.tarea.tiempoEstimado > 0" class="text-right">
             <span class="text-xs text-gray-500 dark:text-gray-400">Tiempo restante</span>
-            <p class="text-lg font-bold" :class="tec.tarea.tiempoRestante < 5 ? 'text-red-600 dark:text-red-400 animate-pulse' : 'text-blue-600 dark:text-blue-400'">
-              {{ formatTiempoRestante(tec.tarea.tiempoRestante) }}
+            <p class="text-lg font-bold" :class="calcularTiempoRestanteLocal(tec.tarea) < 5 ? 'text-red-600 dark:text-red-400 animate-pulse' : 'text-blue-600 dark:text-blue-400'">
+              {{ formatTiempoRestante(calcularTiempoRestanteLocal(tec.tarea)) }}
             </p>
-          </div>
-          <div v-else-if="tec.tarea && tec.tarea.tiempoRestante === null" class="text-right">
-            <span class="text-xs text-gray-500 dark:text-gray-400">Estado</span>
-            <p class="text-sm font-medium text-green-600 dark:text-green-400">En progreso</p>
           </div>
         </div>
         
         <div v-if="tec.tarea" class="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
           <div class="flex justify-between items-center mb-1">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">📋 {{ tec.tarea.titulo }}</span>
-            <span class="text-xs text-gray-500 dark:text-gray-400">{{ tec.tarea.porcentajeCompletado }}%</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">{{ calcularProgresoLocal(tec.tarea) }}%</span>
           </div>
           <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
             <div 
               class="bg-blue-600 dark:bg-blue-500 rounded-full h-2 transition-all duration-500"
-              :style="{ width: `${tec.tarea.porcentajeCompletado}%` }"
+              :style="{ width: `${calcularProgresoLocal(tec.tarea)}%` }"
             ></div>
           </div>
           <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{{ tec.tarea.descripcion || 'Sin descripción' }}</p>
@@ -1320,8 +1311,8 @@ components\EstadoEmpleados.vue
             <div v-if="tec.tarea.tiempoEstimado > 0">
               ⏱️ Estimado: {{ formatTiempo(tec.tarea.tiempoEstimado) }}
             </div>
-            <div v-if="tec.tarea.tiempoTranscurrido > 0">
-              ⏲️ Transcurrido: {{ formatTiempo(tec.tarea.tiempoTranscurrido) }}
+            <div v-if="tec.tarea.tiempoAcumulado > 0 || tec.tarea.estadoProgreso === 'activa'">
+              ⏲️ Transcurrido: {{ formatTiempo(calcularTiempoTranscurridoLocal(tec.tarea)) }}
             </div>
             <div v-if="tec.tarea.fechaEstimadaFin">
               🎯 Finaliza: {{ formatFechaHora(tec.tarea.fechaEstimadaFin) }}
@@ -1337,17 +1328,108 @@ components\EstadoEmpleados.vue
         </div>
       </div>
     </div>
+    
+    <!-- Panel de diagnóstico -->
+    <details class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+      <summary class="text-xs text-gray-400 dark:text-gray-500 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">
+        🔍 Diagnóstico de conexión
+      </summary>
+      <div class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+        <div class="bg-gray-50 dark:bg-gray-900 rounded p-2">
+          <span class="text-gray-500 dark:text-gray-400 block">Socket</span>
+          <span :class="socketConectado ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'" class="font-bold">
+            {{ socketConectado ? '✅ Conectado' : '❌ Desconectado' }}
+          </span>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-900 rounded p-2">
+          <span class="text-gray-500 dark:text-gray-400 block">Socket ID</span>
+          <span class="font-mono text-gray-700 dark:text-gray-300 text-[10px]">{{ empleadosStore.socketId || 'N/A' }}</span>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-900 rounded p-2">
+          <span class="text-gray-500 dark:text-gray-400 block">Eventos recibidos</span>
+          <span class="font-bold text-blue-600 dark:text-blue-400">{{ empleadosStore.eventosRecibidos }}</span>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-900 rounded p-2">
+          <span class="text-gray-500 dark:text-gray-400 block">Último evento</span>
+          <span class="font-mono text-gray-700 dark:text-gray-300 truncate text-[10px]" :title="empleadosStore.ultimoEvento?.evento">
+            {{ empleadosStore.ultimoEvento?.evento || 'Ninguno' }}
+          </span>
+        </div>
+      </div>
+      <div v-if="empleadosStore.ultimoEvento" class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+        ⏱️ Último evento: {{ formatHora(empleadosStore.ultimoEvento.timestamp) }}
+      </div>
+      <div v-if="empleadosStore.ultimaActualizacion" class="text-xs text-gray-400 dark:text-gray-500">
+        🔄 Última actualización: {{ formatHora(empleadosStore.ultimaActualizacion) }}
+      </div>
+      <div class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+        🎧 Listeners registrados: {{ empleadosStore.listenersRegistrados ? '✅ Sí' : '❌ No' }}
+      </div>
+      <div class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+        ⏰ Ticks locales: {{ tickTiempo }}
+      </div>
+    </details>
   </div>
 </template>
 
 <script setup>
-console.log('👥 [EstadoEmpleados] Componente cargado')
+import { useEmpleadosStore } from '~/stores/empleados';
 
-const config = useRuntimeConfig();
-const estadosTecnicos = ref([]);
-const cargando = ref(false);
-const refrescando = ref(false);
-let intervaloActualizacion = null;
+console.log('👥 [EstadoEmpleados] Componente cargado');
+
+const empleadosStore = useEmpleadosStore();
+const socketConectado = ref(false);
+const tickTiempo = ref(0);
+
+let fallbackInterval = null;
+let intervaloTiempo = null;
+let socketListenerConnect = null;
+let socketListenerDisconnect = null;
+let visibilityHandler = null;
+
+// ============================================================
+// CÁLCULO LOCAL DEL TIEMPO — idéntico al del técnico
+// Usa tiempoAcumulado + (ahora - fechaUltimaReanudacion)
+// ============================================================
+
+const calcularTiempoTranscurridoLocal = (tarea) => {
+  if (!tarea) return 0;
+  
+  // 🔥 Base: tiempo acumulado (lo trabajado antes de la última reanudación)
+  let tiempoTotal = tarea.tiempoAcumulado || 0;
+  
+  // Si la tarea está activa, sumar el tiempo desde la última reanudación
+  if (tarea.estadoProgreso === 'activa' && tarea.fechaUltimaReanudacion) {
+    const ahora = new Date();
+    const inicio = new Date(tarea.fechaUltimaReanudacion);
+    const minutosDesdeReanudacion = Math.floor((ahora - inicio) / 1000 / 60);
+    tiempoTotal += minutosDesdeReanudacion;
+  }
+  
+  return tiempoTotal;
+};
+
+const calcularTiempoRestanteLocal = (tarea) => {
+  if (!tarea) return 0;
+  const estimado = tarea.tiempoEstimado || 0;
+  const transcurrido = calcularTiempoTranscurridoLocal(tarea);
+  return Math.max(0, estimado - transcurrido);
+};
+
+const calcularProgresoLocal = (tarea) => {
+  if (!tarea) return 0;
+  if (!tarea.tiempoEstimado || tarea.tiempoEstimado <= 0) {
+    return tarea.porcentajeCompletado || 0;
+  }
+  const transcurrido = calcularTiempoTranscurridoLocal(tarea);
+  let progreso = Math.min(100, Math.floor((transcurrido / tarea.tiempoEstimado) * 100));
+  progreso = Math.max(progreso, tarea.porcentajeCompletado || 0);
+  return Math.min(100, progreso);
+};
+
+// ============================================================
+// FUNCIONES DE UTILIDAD
+// ============================================================
 
 const formatTiempo = (minutos) => {
   if (!minutos && minutos !== 0) return 'No establecido';
@@ -1375,53 +1457,101 @@ const formatFechaHora = (fecha) => {
   return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 };
 
-const cargarEstadoTecnicos = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const url = `${config.public.apiBase}/tarjetas/estado-empleados`;
-    console.log('👥 [EstadoEmpleados] Cargando estado...')
-    const response = await $fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    estadosTecnicos.value = response;
-    console.log(`✅ [EstadoEmpleados] ${response.length} técnicos cargados`)
-  } catch (error) {
-    console.error('❌ [EstadoEmpleados] Error:', error);
-  }
+const formatHora = (fecha) => {
+  if (!fecha) return '';
+  const d = new Date(fecha);
+  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
 
 const refrescar = async () => {
-  refrescando.value = true;
-  await cargarEstadoTecnicos();
-  setTimeout(() => {
-    refrescando.value = false;
-  }, 500);
+  console.log('🔄 [EstadoEmpleados] Refrescar manual');
+  await empleadosStore.cargarEstadoTecnicos('manual-component');
 };
 
-const actualizarEstadoTiempoReal = (data) => {
-  console.log('👥 [EstadoEmpleados] Actualización en tiempo real:', data);
-  cargarEstadoTecnicos();
-};
-
-if (process.client) {
-  window.registerEstadoUpdateCallback(actualizarEstadoTiempoReal);
-}
-
+// ============================================================
+// LIFECYCLE
+// ============================================================
 onMounted(async () => {
-  console.log('✅ [EstadoEmpleados] Montado')
-  cargando.value = true;
-  await cargarEstadoTecnicos();
-  cargando.value = false;
+  console.log('========================================');
+  console.log('✅ [EstadoEmpleados] onMounted');
+  console.log('========================================');
   
-  intervaloActualizacion = setInterval(() => {
-    cargarEstadoTecnicos();
-  }, 30000);
+  await empleadosStore.cargarEstadoTecnicos('mount');
+  empleadosStore.registrarListenersSocket();
+  
+  const nuxtApp = useNuxtApp();
+  const socket = nuxtApp.$socket;
+  
+  if (socket) {
+    socketConectado.value = socket.connected;
+    
+    socketListenerConnect = () => {
+      console.log('🔌 [EstadoEmpleados] Socket reconectado');
+      socketConectado.value = true;
+      empleadosStore.registrarListenersSocket();
+      empleadosStore.cargarEstadoTecnicos('socket-reconnect');
+    };
+    
+    socketListenerDisconnect = () => {
+      console.log('🔌 [EstadoEmpleados] Socket desconectado');
+      socketConectado.value = false;
+    };
+    
+    socket.on('connect', socketListenerConnect);
+    socket.on('disconnect', socketListenerDisconnect);
+  } else {
+    console.warn('⚠️ [EstadoEmpleados] Socket no disponible en onMounted');
+  }
+  
+  fallbackInterval = setInterval(() => {
+    if (!socketConectado.value) {
+      console.log('🔄 [EstadoEmpleados] Fallback polling (socket desconectado)');
+      empleadosStore.cargarEstadoTecnicos('fallback-polling');
+    }
+  }, 60000);
+  
+  // 🔥 Intervalo local cada 1s para que el cronómetro corra en vivo
+  console.log('⏱️ [EstadoEmpleados] Activando intervalo local de 1s');
+  intervaloTiempo = setInterval(() => {
+    tickTiempo.value++;
+  }, 1000);
+  
+  // 🔥 Detectar cuando el usuario vuelve a la pestaña (móviles)
+  visibilityHandler = () => {
+    if (!document.hidden) {
+      console.log('👁️ [EstadoEmpleados] Pestaña visible, recargando...');
+      empleadosStore.cargarEstadoTecnicos('visibility-restored');
+      tickTiempo.value++;
+    }
+  };
+  document.addEventListener('visibilitychange', visibilityHandler);
+  
+  console.log('========================================');
 });
 
 onUnmounted(() => {
-  console.log('🛑 [EstadoEmpleados] Desmontando')
-  if (intervaloActualizacion) {
-    clearInterval(intervaloActualizacion);
+  console.log('🛑 [EstadoEmpleados] onUnmounted');
+  
+  if (fallbackInterval) {
+    clearInterval(fallbackInterval);
+    fallbackInterval = null;
+  }
+  
+  if (intervaloTiempo) {
+    clearInterval(intervaloTiempo);
+    intervaloTiempo = null;
+  }
+  
+  if (visibilityHandler) {
+    document.removeEventListener('visibilitychange', visibilityHandler);
+    visibilityHandler = null;
+  }
+  
+  const nuxtApp = useNuxtApp();
+  const socket = nuxtApp.$socket;
+  if (socket && socketListenerConnect) {
+    socket.off('connect', socketListenerConnect);
+    socket.off('disconnect', socketListenerDisconnect);
   }
 });
 
@@ -1912,18 +2042,22 @@ components\KanbanBoardProfesional.vue
         </div>
         
         <div class="flex gap-3">
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
+            <div class="bg-gray-50 dark:bg-gray-900/30 rounded-lg px-3 py-1.5 text-sm">
+              <span class="text-gray-600 dark:text-gray-400">Total:</span>
+              <span class="font-semibold ml-1 text-gray-700 dark:text-gray-300">{{ totalTareas }}</span>
+            </div>
+            <div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg px-3 py-1.5 text-sm">
+              <span class="text-purple-600 dark:text-purple-400">Asignados:</span>
+              <span class="font-semibold ml-1 text-purple-700 dark:text-purple-300">{{ tareasAsignadas }}</span>
+            </div>
             <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg px-3 py-1.5 text-sm">
-              <span class="text-blue-600 dark:text-blue-400">Total:</span>
-              <span class="font-semibold ml-1 text-blue-700 dark:text-blue-300">{{ totalTareas }}</span>
+              <span class="text-blue-600 dark:text-blue-400">En progreso:</span>
+              <span class="font-semibold ml-1 text-blue-700 dark:text-blue-300">{{ tareasEnProgreso }}</span>
             </div>
             <div class="bg-green-50 dark:bg-green-900/30 rounded-lg px-3 py-1.5 text-sm">
               <span class="text-green-600 dark:text-green-400">Completadas:</span>
               <span class="font-semibold ml-1 text-green-700 dark:text-green-300">{{ tareasCompletadas }}</span>
-            </div>
-            <div class="bg-orange-50 dark:bg-orange-900/30 rounded-lg px-3 py-1.5 text-sm">
-              <span class="text-orange-600 dark:text-orange-400">En progreso:</span>
-              <span class="font-semibold ml-1 text-orange-700 dark:text-orange-300">{{ tareasEnProgreso }}</span>
             </div>
           </div>
           <button
@@ -2026,7 +2160,7 @@ import TarjetaModalProfesional from './TarjetaModalProfesional.vue';
 
 const tarjetasStore = useTarjetasStore();
 
-// 🔥 Columnas con IDs actualizados (revision_supervisor en lugar de revision_jefe)
+// 🔥 NUEVAS COLUMNAS: Pendientes, Asignados, En Progreso, Finalizadas
 const columnas = ref([
   { 
     id: 'pendiente', 
@@ -2037,26 +2171,18 @@ const columnas = ref([
     tareas: []
   },
   { 
+    id: 'asignado', 
+    titulo: '👤 Asignados', 
+    color: 'bg-purple-500 dark:bg-purple-600',
+    iconoVacio: '👤',
+    permiteAgregar: false,
+    tareas: []
+  },
+  { 
     id: 'en_progreso', 
     titulo: '⚙️ En Progreso', 
     color: 'bg-blue-500 dark:bg-blue-600',
     iconoVacio: '⚙️',
-    permiteAgregar: false,
-    tareas: []
-  },
-  { 
-    id: 'revision_supervisor',  // 🔥 Cambiado de 'revision_jefe'
-    titulo: '👔 Revisión Supervisor', 
-    color: 'bg-orange-500 dark:bg-orange-600',
-    iconoVacio: '👔',
-    permiteAgregar: false,
-    tareas: []
-  },
-  { 
-    id: 'revision_cliente', 
-    titulo: '⭐ Revisión Usuario', 
-    color: 'bg-yellow-500 dark:bg-yellow-600',
-    iconoVacio: '⭐',
     permiteAgregar: false,
     tareas: []
   },
@@ -2071,127 +2197,123 @@ const columnas = ref([
 ]);
 
 const totalTareas = computed(() => tarjetasStore.tarjetas.length);
-const tareasCompletadas = computed(() => tarjetasStore.tarjetas.filter(t => t.estado === 'finalizada' || t.estado === 'revision_cliente').length);
-const tareasEnProgreso = computed(() => tarjetasStore.tarjetas.filter(t => t.estado === 'en_progreso').length);
+
+// 🔥 Tareas asignadas: en_progreso pero no activas (pausadas o sin iniciar)
+const tareasAsignadas = computed(() => 
+  tarjetasStore.tarjetas.filter(t => 
+    t.estado === 'en_progreso' && t.estadoProgreso !== 'activa'
+  ).length
+);
+
+// 🔥 Tareas en progreso: solo las activas
+const tareasEnProgreso = computed(() => 
+  tarjetasStore.tarjetas.filter(t => 
+    t.estado === 'en_progreso' && t.estadoProgreso === 'activa'
+  ).length
+);
+
+// 🔥 Tareas finalizadas: finalizadas + revision_supervisor + revision_cliente (compatibilidad)
+const tareasCompletadas = computed(() => 
+  tarjetasStore.tarjetas.filter(t => 
+    t.estado === 'finalizada' || 
+    t.estado === 'revision_supervisor' || 
+    t.estado === 'revision_cliente' ||
+    t.estado === 'revision_jefe' ||
+    t.estado === 'completada'
+  ).length
+);
 
 const selectedTarjeta = ref(null);
 const modalTareaRapida = ref(false);
 
 // ============================================================
-// 🔥 FUNCIÓN PRINCIPAL: Organizar tareas en columnas
+// 🔥 ORGANIZAR TAREAS EN COLUMNAS
 // ============================================================
-
 const organizarTareas = () => {
   console.log('🔄 [Kanban] Organizando tareas...');
   
-  // Mapeo de estados a IDs de columnas
   const mapa = {
     pendiente: [],
+    asignado: [],
     en_progreso: [],
-    revision_supervisor: [],  // 🔥 Cambiado de revision_jefe
-    revision_cliente: [],
     finalizada: []
   };
   
   tarjetasStore.tarjetas.forEach(tarjeta => {
     let estado = tarjeta.estado;
     
-    // 🔥 Mapear estados antiguos a nuevos si vienen de la base de datos
-    if (estado === 'revision_jefe') {
-      estado = 'revision_supervisor';
+    // 🔥 Normalizar estados antiguos (compatibilidad)
+    if (estado === 'revision_jefe' || estado === 'revision_supervisor') {
+      estado = 'finalizada';
     }
-    if (estado === 'completada') {
+    if (estado === 'revision_cliente' || estado === 'completada') {
       estado = 'finalizada';
     }
     
-    if (mapa[estado] !== undefined) {
+    // 🔥 Caso especial: en_progreso se divide en asignado/en_progreso
+    if (estado === 'en_progreso') {
+      if (tarjeta.estadoProgreso === 'activa') {
+        mapa.en_progreso.push(tarjeta);
+      } else {
+        // Pausada o sin iniciar → Asignados
+        mapa.asignado.push(tarjeta);
+      }
+    } else if (mapa[estado] !== undefined) {
       mapa[estado].push(tarjeta);
     } else {
-      // Si el estado no está en el mapa, asignar a pendiente por defecto
       console.warn(`⚠️ [Kanban] Estado desconocido: ${estado}, asignando a pendiente`);
       mapa.pendiente.push(tarjeta);
     }
   });
   
-  // Asignar tareas a cada columna
   columnas.value.forEach(col => {
-    let id = col.id;
-    // Mapear IDs de columnas antiguos a nuevos
-    if (id === 'revision_jefe') {
-      id = 'revision_supervisor';
-    }
-    col.tareas = mapa[id] || [];
+    col.tareas = mapa[col.id] || [];
   });
   
   console.log(`📊 [Kanban] Tareas organizadas:`, {
     pendiente: mapa.pendiente.length,
+    asignado: mapa.asignado.length,
     en_progreso: mapa.en_progreso.length,
-    revision_supervisor: mapa.revision_supervisor.length,
-    revision_cliente: mapa.revision_cliente.length,
     finalizada: mapa.finalizada.length
   });
 };
 
 // ============================================================
-// DRAG & DROP
+// DRAG & DROP (simplificado: solo movimientos válidos)
 // ============================================================
-
 const onDragEnd = async (event, nuevoEstado) => {
   const tarjetaId = event.item.__draggable_context.element._id;
   const tarjeta = tarjetasStore.tarjetas.find(t => t._id === tarjetaId);
   
-  if (!tarjeta || tarjeta.estado === nuevoEstado) return;
+  if (!tarjeta) return;
   
-  // 🔥 Mapear estados para compatibilidad
-  let estadoDestino = nuevoEstado;
-  if (estadoDestino === 'revision_supervisor') estadoDestino = 'revision_jefe';
-  
-  const transicionesValidas = {
-    pendiente: ['en_progreso'],
-    en_progreso: ['revision_jefe', 'revision_supervisor'],
-    revision_jefe: ['finalizada'],
-    revision_supervisor: ['finalizada'],
-    revision_cliente: ['finalizada']
-  };
-  
-  // Normalizar estado actual para validación
+  // Normalizar estados
   let estadoActual = tarjeta.estado;
-  if (estadoActual === 'revision_jefe') estadoActual = 'revision_supervisor';
+  if (estadoActual === 'revision_jefe' || estadoActual === 'revision_supervisor' || 
+      estadoActual === 'revision_cliente' || estadoActual === 'completada') {
+    estadoActual = 'finalizada';
+  }
   
-  if (!transicionesValidas[estadoActual]?.includes(estadoDestino)) {
-    alert(`⚠️ No se puede mover de "${tarjeta.estado}" a "${nuevoEstado}"`);
+  // 🔥 Reglas simplificadas:
+  // - Las columnas "Asignados" y "En Progreso" NO son destinos válidos para drag&drop
+  //   (esas las controlan los técnicos con sus botones Iniciar/Pausar)
+  // - "Finalizadas" tampoco es destino válido por drag&drop
+  
+  if (nuevoEstado === 'asignado' || nuevoEstado === 'en_progreso' || nuevoEstado === 'finalizada') {
+    console.log(`⚠️ [Kanban] Las columnas "Asignados", "En Progreso" y "Finalizadas" no aceptan drag&drop`);
     organizarTareas();
     return;
   }
   
-  if ((estadoDestino === 'revision_jefe' || estadoDestino === 'revision_supervisor') && tarjeta.porcentajeCompletado < 100) {
-    alert('⚠️ La tarea debe estar 100% completada para enviar a revisión');
-    organizarTareas();
-    return;
-  }
-  
-  try {
-    // Registrar el movimiento como progreso
-    await tarjetasStore.registrarProgreso(tarjetaId, {
-      porcentajeAvance: tarjeta.porcentajeCompletado || 0,
-      horasTrabajadas: 0,
-      comentario: `Movido de ${tarjeta.estado} a ${nuevoEstado}`
-    });
-    
-    // Esperar a que se recarguen los datos y luego reorganizar
-    await tarjetasStore.fetchTarjetas();
-    organizarTareas();
-  } catch (error) {
-    console.error('❌ [Kanban] Error al mover tarea:', error);
-    alert('Error al mover la tarea');
-    organizarTareas();
-  }
+  // Solo permitir mover tareas desde "Pendientes" hacia sí mismo (no-op)
+  // Realmente no hay movimientos válidos por drag&drop en esta nueva versión
+  console.log(`ℹ️ [Kanban] Drag&drop deshabilitado, reorganizando...`);
+  organizarTareas();
 };
 
 // ============================================================
 // MODALES
 // ============================================================
-
 const openTarjetaModal = (tarjeta) => {
   selectedTarjeta.value = tarjeta;
 };
@@ -2208,14 +2330,12 @@ const handleTareaCreada = () => {
 // ============================================================
 // FETCH Y EXPOSICIÓN DE MÉTODOS
 // ============================================================
-
 const fetchTarjetas = async () => {
   console.log('🔄 [Kanban] fetchTarjetas...');
   await tarjetasStore.fetchTarjetas();
   organizarTareas();
 };
 
-// 🔥 Exponer métodos al padre
 defineExpose({ 
   fetchTarjetas,
   organizarTareas
@@ -2224,13 +2344,10 @@ defineExpose({
 // ============================================================
 // WATCHERS Y LIFECYCLE
 // ============================================================
-
-// Organizar tareas cuando cambien en el store
 watch(() => tarjetasStore.tarjetas, () => {
   organizarTareas();
 }, { deep: true });
 
-// Organizar tareas al montar
 onMounted(() => {
   organizarTareas();
 });
@@ -2697,83 +2814,120 @@ components\RegistrarProgresoModal.vue
 ================================= 
  
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
-      <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">📊 Registrar progreso</h3>
-        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+      
+      <!-- Header sticky -->
+      <div class="flex justify-between items-center p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-900/20 dark:to-gray-800 rounded-t-lg flex-shrink-0">
+        <h3 class="text-base sm:text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+          <span class="text-xl sm:text-2xl">✅</span>
+          Finalizar tarea
+        </h3>
+        <button 
+          @click="$emit('close')" 
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition"
+        >
+          ✕
+        </button>
       </div>
       
-      <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
-        <!-- Información de la tarea -->
-        <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+      <!-- Body con scroll interno -->
+      <form @submit.prevent="handleSubmit" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        
+        <!-- Info de la tarea -->
+        <div class="bg-emerald-50 dark:bg-emerald-900/30 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800">
           <p class="text-sm font-medium text-gray-800 dark:text-white">{{ tarjeta.titulo }}</p>
-          <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-            <span>Progreso actual: <strong class="text-blue-600 dark:text-blue-400">{{ tarjeta.porcentajeCompletado }}%</strong></span>
-            <span>Tiempo estimado: <strong>{{ formatTiempo(tarjeta.tiempoEstimadoEmpleado) }}</strong></span>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{{ tarjeta.descripcion || 'Sin descripción' }}</p>
+        </div>
+        
+        <!-- RESUMEN DE TIEMPO -->
+        <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h4 class="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+            📊 Resumen de tiempo
+          </h4>
+          
+          <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-2 sm:p-3 text-center border border-gray-200 dark:border-gray-700">
+              <span class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 block mb-1">⏱️ Trabajado</span>
+              <span class="font-bold text-emerald-600 dark:text-emerald-400 text-base sm:text-lg font-mono">
+                {{ formatTiempo(tiempoTranscurridoReal) }}
+              </span>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-2 sm:p-3 text-center border border-gray-200 dark:border-gray-700">
+              <span class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 block mb-1">🎯 Estimado</span>
+              <span class="font-bold text-blue-600 dark:text-blue-400 text-base sm:text-lg font-mono">
+                {{ tiempoEstimado > 0 ? formatTiempo(tiempoEstimado) : 'Sin definir' }}
+              </span>
+            </div>
           </div>
-          <div class="text-xs text-green-600 dark:text-green-400 mt-1">
-            ⏱️ Tiempo trabajado: <strong>{{ tiempoTranscurridoFormateado }}</strong>
-            <span class="text-gray-400 text-[10px] block">(Calculado automáticamente)</span>
+          
+          <div v-if="tiempoEstimado > 0" 
+               class="text-[11px] sm:text-xs p-2 rounded-lg text-center font-medium"
+               :class="tiempoTranscurridoReal <= tiempoEstimado 
+                 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                 : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'">
+            <span v-if="tiempoTranscurridoReal <= tiempoEstimado">
+              ✅ Terminaste {{ formatTiempo(tiempoEstimado - tiempoTranscurridoReal) }} antes
+            </span>
+            <span v-else>
+              ⚠️ Excediste por {{ formatTiempo(tiempoTranscurridoReal - tiempoEstimado) }}
+            </span>
           </div>
         </div>
         
-        <!-- SOLO PORCENTAJE DE AVANCE -->
+        <!-- COMENTARIO OBLIGATORIO -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            📊 Nuevo porcentaje completado <span class="text-red-500">*</span>
-          </label>
-          <input
-            v-model.number="form.porcentajeAvance"
-            type="range"
-            min="0"
-            max="100"
-            step="5"
-            class="w-full"
-          />
-          <div class="text-center text-sm font-bold mt-1" :class="porcentajeColor">
-            {{ form.porcentajeAvance }}%
-          </div>
-        </div>
-        
-        <!-- COMENTARIO (OPCIONAL) -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            💬 Comentario (opcional)
+          <label class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            💬 Comentario de finalización <span class="text-red-500">*</span>
           </label>
           <textarea
             v-model="form.comentario"
-            rows="2"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-            placeholder="Describe el avance realizado..."
+            rows="3"
+            required
+            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white transition text-sm resize-none"
+            :class="comentarioError 
+              ? 'border-red-400 dark:border-red-500 focus:ring-red-500 focus:border-red-500' 
+              : 'border-gray-300 dark:border-gray-600'"
+            placeholder="Explica brevemente cómo se desarrolló la tarea..."
+            @input="comentarioError = false"
           ></textarea>
-        </div>
-        
-        <!-- BOTONES -->
-        <div class="flex gap-2 pt-2">
-          <button
-            type="submit"
-            :disabled="loading"
-            class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition dark:bg-green-700 dark:hover:bg-green-800"
-          >
-            {{ loading ? 'Guardando...' : '📊 Registrar avance' }}
-          </button>
-          <button
-            type="button"
-            @click="$emit('close')"
-            class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-          >
-            Cancelar
-          </button>
-        </div>
-        
-        <!-- Mensaje de advertencia -->
-        <div v-if="form.porcentajeAvance >= 100" class="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
-          <p class="text-sm text-green-700 dark:text-green-300 text-center">
-            🎉 ¡Tarea completada! Se enviará a revisión del supervisor.
+          <p v-if="comentarioError" class="text-[11px] sm:text-xs text-red-500 dark:text-red-400 mt-1">
+            ⚠️ El comentario es obligatorio (mínimo 5 caracteres).
+          </p>
+          <p v-else class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
+            El supervisor leerá este comentario al revisar la tarea.
           </p>
         </div>
+        
+        <!-- ADVERTENCIA -->
+        <div class="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-2 sm:p-3">
+          <p class="text-[11px] sm:text-xs text-yellow-800 dark:text-yellow-200">
+            ⚠️ <strong>Esta acción no se puede deshacer.</strong> La tarea se marcará como <strong>100% completada</strong> y se enviará a revisión del supervisor.
+          </p>
+        </div>
+        
       </form>
+      
+      <!-- Footer sticky con botones -->
+      <div class="flex gap-2 p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg flex-shrink-0">
+        <button
+          type="button"
+          @click="handleSubmit"
+          :disabled="loading || !comentarioValido"
+          class="flex-1 bg-emerald-600 text-white py-2 sm:py-2.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium flex items-center justify-center gap-2 text-sm"
+        >
+          <span v-if="loading" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          {{ loading ? 'Finalizando...' : '✅ Confirmar' }}
+        </button>
+        <button
+          type="button"
+          @click="$emit('close')"
+          class="flex-1 bg-gray-200 text-gray-700 py-2 sm:py-2.5 rounded-lg hover:bg-gray-300 transition dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 font-medium text-sm"
+        >
+          Cancelar
+        </button>
+      </div>
+      
     </div>
   </div>
 </template>
@@ -2790,17 +2944,23 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated']);
 
-console.log('📊 [RegistrarProgresoModal] Componente cargado - VERSIÓN SIMPLIFICADA');
+console.log('✅ [RegistrarProgresoModal] Modal de finalización cargado');
 
 const tarjetasStore = useTarjetasStore();
 const loading = ref(false);
+const comentarioError = ref(false);
 
 const form = ref({
-  porcentajeAvance: props.tarjeta.porcentajeCompletado || 0,
   comentario: ''
 });
 
-const tiempoTranscurridoFormateado = computed(() => {
+const comentarioValido = computed(() => {
+  return form.value.comentario && form.value.comentario.trim().length >= 5;
+});
+
+const tiempoEstimado = computed(() => props.tarjeta.tiempoEstimadoEmpleado || 0);
+
+const tiempoTranscurridoReal = computed(() => {
   let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
   
   if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
@@ -2810,13 +2970,7 @@ const tiempoTranscurridoFormateado = computed(() => {
     tiempoTotal += minutosDesdeReanudacion;
   }
   
-  return formatTiempo(tiempoTotal);
-});
-
-const porcentajeColor = computed(() => {
-  if (form.value.porcentajeAvance >= 100) return 'text-green-600 dark:text-green-400';
-  if (form.value.porcentajeAvance >= 50) return 'text-blue-600 dark:text-blue-400';
-  return 'text-gray-600 dark:text-gray-400';
+  return tiempoTotal;
 });
 
 const formatTiempo = (minutos) => {
@@ -2829,26 +2983,39 @@ const formatTiempo = (minutos) => {
 };
 
 const handleSubmit = async () => {
-  console.log('📤 [RegistrarProgresoModal] Enviando progreso...');
-  console.log(`   📊 Progreso: ${form.value.porcentajeAvance}%`);
+  if (!comentarioValido.value) {
+    comentarioError.value = true;
+    return;
+  }
+  
+  console.log('✅ [RegistrarProgresoModal] Finalizando tarea...');
+  console.log(`   📊 Se enviará 100% de progreso`);
+  console.log(`   ⏱️ Tiempo trabajado: ${formatTiempo(tiempoTranscurridoReal.value)}`);
   console.log(`   💬 Comentario: ${form.value.comentario}`);
+  
+  const confirmacion = confirm(
+    `¿Confirmar la finalización de la tarea?\n\n` +
+    `⏱️ Tiempo trabajado: ${formatTiempo(tiempoTranscurridoReal.value)}\n` +
+    (tiempoEstimado.value > 0 ? `🎯 Tiempo estimado: ${formatTiempo(tiempoEstimado.value)}\n` : '') +
+    `\nLa tarea se marcará como 100% completada y se enviará a revisión.`
+  );
+  
+  if (!confirmacion) return;
   
   loading.value = true;
   try {
     const dataToSend = {
-      porcentajeAvance: form.value.porcentajeAvance,
-      comentario: form.value.comentario
+      porcentajeAvance: 100,
+      comentario: form.value.comentario.trim()
     };
     
-    console.log('📦 Datos enviados:', dataToSend);
-    
     await tarjetasStore.registrarProgreso(props.tarjeta._id, dataToSend);
+    alert('✅ Tarea finalizada exitosamente. Se envió a revisión del supervisor.');
     emit('updated');
     emit('close');
   } catch (error) {
-    console.error('❌ Error registrando progreso:', error);
-    console.error('   Detalles:', error.data);
-    alert('Error al registrar el progreso: ' + (error.message || error.data?.message || 'Error desconocido'));
+    console.error('❌ Error finalizando:', error);
+    alert('Error al finalizar: ' + (error.message || error.data?.message || 'Error desconocido'));
   } finally {
     loading.value = false;
   }
@@ -3628,41 +3795,19 @@ components\SolicitudModal.vue
           ></textarea>
         </div>
         
-        <div v-if="extra">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tiempo estimado (para tu planificación)</label>
-          <div class="flex gap-2">
-            <div class="flex-1">
-              <input
-                v-model.number="form.horasEstimadas"
-                type="number"
-                step="0.5"
-                min="0"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Horas"
-              />
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Horas</p>
-            </div>
-            <div class="flex-1">
-              <input
-                v-model.number="form.minutosEstimados"
-                type="number"
-                step="5"
-                min="0"
-                max="55"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Minutos"
-              />
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Minutos</p>
-            </div>
-          </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            📊 Tiempo total estimado: {{ tiempoEstimadoFormateado }}
+        <!-- 🔥 ELIMINADO: El campo "Tiempo estimado (para tu planificación)" 
+             ya no se muestra porque no aporta valor: el técnico igual deberá
+             establecer el tiempo estimado real cuando inicie la tarea. -->
+        
+        <div v-if="!extra" class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            ⏱️ El tiempo de la tarea será estimado por el técnico asignado.
           </p>
         </div>
         
-        <div v-else class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            ⏱️ El tiempo de la tarea será estimado por el técnico asignado.
+        <div v-if="extra" class="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+          <p class="text-sm text-green-700 dark:text-green-300">
+            ✅ La tarea se creará asignada a ti. Cuando decidas trabajar en ella, podrás establecer el tiempo estimado antes de iniciarla.
           </p>
         </div>
         
@@ -3691,12 +3836,6 @@ components\SolicitudModal.vue
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
           />
           <p class="text-xs text-gray-500 dark:text-gray-400">✨ Regístrate después para ver el estado de tu solicitud</p>
-        </div>
-        
-        <div v-if="extra" class="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
-          <p class="text-sm text-green-700 dark:text-green-300">
-            ✅ La tarea se creará automáticamente asignada a ti y pasará a "En Progreso".
-          </p>
         </div>
         
         <button
@@ -3735,27 +3874,10 @@ const solicitudSeleccionada = ref(null);
 const form = ref({
   titulo: '',
   descripcion: '',
-  horasEstimadas: 0,
-  minutosEstimados: 0,
   logueado: false,
   nombre: '',
   email: '',
   telefono: ''
-});
-
-const tiempoTotalMinutos = computed(() => {
-  return ((form.value.horasEstimadas || 0) * 60) + (form.value.minutosEstimados || 0);
-});
-
-const tiempoEstimadoFormateado = computed(() => {
-  const totalMinutos = tiempoTotalMinutos.value;
-  const horas = Math.floor(totalMinutos / 60);
-  const minutos = totalMinutos % 60;
-  
-  if (totalMinutos === 0) return 'Sin especificar';
-  if (horas === 0) return `${minutos} minutos`;
-  if (minutos === 0) return `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
-  return `${horas} ${horas === 1 ? 'hora' : 'horas'} y ${minutos} minutos`;
 });
 
 const prioridadBadgeClass = (prioridad) => {
@@ -3817,13 +3939,13 @@ const handleSubmit = async () => {
     const nombreCompleto = authStore.user?.nombre || form.value.nombre || 'Anónimo';
     
     if (props.extra) {
+      // 🔥 Ya no se envían horasEstimadas ni minutosEstimados
+      // El técnico los establecerá cuando decida iniciar la tarea
       await tarjetasStore.crearTareaExtra({
         titulo: form.value.titulo,
-        descripcion: form.value.descripcion,
-        horasEstimadas: form.value.horasEstimadas,
-        minutosEstimados: form.value.minutosEstimados
+        descripcion: form.value.descripcion
       });
-      alert('✅ Tarea extra creada exitosamente.');
+      alert('✅ Tarea extra creada exitosamente. Podrás establecer el tiempo estimado cuando la inicies.');
     } else {
       await tarjetasStore.crearSolicitud({
         titulo: form.value.titulo,
@@ -3846,8 +3968,6 @@ const handleSubmit = async () => {
     form.value = {
       titulo: '',
       descripcion: '',
-      horasEstimadas: 0,
-      minutosEstimados: 0,
       logueado: false,
       nombre: '',
       email: '',
@@ -4987,11 +5107,11 @@ components\TarjetaModalProfesional.vue
           </div>
         </div>
         
-        <!-- Comentario del técnico -->
+        <!-- Comentario del técnico (registro de progreso) -->
         <div v-if="tarjeta.registroHoras && tarjeta.registroHoras.length > 0" 
              class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
           <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
-            💬 Comentario del técnico
+            💬 Comentarios de progreso del técnico
           </h4>
           <div v-for="(registro, index) in tarjeta.registroHoras.slice().reverse().filter(r => r.comentario)" :key="index" 
                class="border-b border-yellow-100 dark:border-yellow-800/50 last:border-0 py-2">
@@ -5009,48 +5129,99 @@ components\TarjetaModalProfesional.vue
           </p>
         </div>
         
-        <!-- ============================================================
-             LOG DE TIEMPOS (HISTORIAL)
-             ============================================================ -->
+        <!-- Log de tiempos (historial) -->
         <div v-if="tarjeta.logTiempos && tarjeta.logTiempos.length > 0" 
-             class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-          <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
-            📋 Historial de tiempos
-          </h4>
-          <div class="max-h-60 overflow-y-auto space-y-2">
+             class="bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+          <div class="flex justify-between items-center mb-3">
+            <h4 class="font-semibold text-gray-700 dark:text-gray-300 text-sm flex items-center gap-2">
+              📋 Historial de cambios de tiempo
+            </h4>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              {{ tarjeta.logTiempos.length }} evento(s)
+            </span>
+          </div>
+          
+          <div class="max-h-80 overflow-y-auto space-y-3">
             <div v-for="(log, index) in tarjeta.logTiempos.slice().reverse()" :key="index" 
-                 class="bg-white dark:bg-gray-700 rounded-lg p-2 text-xs">
-              <div class="flex justify-between items-start">
-                <div>
-                  <span class="font-medium" :class="getTipoColor(log.tipo)">
-                    {{ getTipoLabel(log.tipo) }}
+                 class="bg-white dark:bg-gray-700 rounded-lg p-3 text-xs border border-gray-100 dark:border-gray-600 hover:shadow-sm transition">
+              
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold" :class="getTipoColor(log.tipo)">
+                    {{ getTipoIcono(log.tipo) }} {{ getTipoLabel(log.tipo) }}
                   </span>
-                  <span class="text-gray-500 dark:text-gray-400 ml-2">
+                  <span class="text-gray-400 dark:text-gray-500 text-[10px]">
                     {{ formatFechaHora(log.timestamp) }}
                   </span>
                 </div>
-                <span v-if="log.eficiencia" :class="getEficienciaColor(log.eficiencia)" class="px-2 py-0.5 rounded-full text-[10px]">
+                <span v-if="log.eficiencia && log.eficiencia !== 'esperado'" 
+                      :class="getEficienciaColor(log.eficiencia)" 
+                      class="px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap">
                   {{ getEficienciaLabel(log.eficiencia) }}
                 </span>
               </div>
-              <div class="text-gray-600 dark:text-gray-300 mt-1">
-                <span v-if="log.tiempoMinutos > 0">⏱️ {{ formatTiempo(log.tiempoMinutos) }}</span>
-                <span v-if="log.tiempoAnterior > 0" class="text-gray-400"> (anterior: {{ formatTiempo(log.tiempoAnterior) }})</span>
-                <span v-if="log.diferencia !== 0" :class="log.diferencia > 0 ? 'text-red-500' : 'text-green-500'">
-                  {{ log.diferencia > 0 ? '+' : '' }}{{ log.diferencia }} min
+              
+              <div v-if="log.tiempoMinutos > 0 || log.tiempoAnterior > 0" 
+                   class="bg-gray-50 dark:bg-gray-800 rounded-md p-2 mb-2">
+                <div class="flex items-center gap-2 flex-wrap text-[11px]">
+                  <span class="text-gray-500 dark:text-gray-400">⏱️ Tiempo estimado:</span>
+                  
+                  <template v-if="log.tiempoAnterior > 0 && log.tiempoMinutos > 0 && log.tiempoAnterior !== log.tiempoMinutos">
+                    <span class="font-medium text-gray-600 dark:text-gray-400 line-through">
+                      {{ formatTiempo(log.tiempoAnterior) }}
+                    </span>
+                    <span class="text-gray-400">→</span>
+                    <span class="font-bold" 
+                          :class="log.tiempoMinutos > log.tiempoAnterior ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'">
+                      {{ formatTiempo(log.tiempoMinutos) }}
+                    </span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                          :class="log.diferencia > 0 
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' 
+                            : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'">
+                      {{ log.diferencia > 0 ? '+' : '' }}{{ log.diferencia }} min
+                    </span>
+                  </template>
+                  
+                  <template v-else-if="log.tiempoMinutos > 0">
+                    <span class="font-bold text-blue-600 dark:text-blue-400">
+                      {{ formatTiempo(log.tiempoMinutos) }}
+                    </span>
+                  </template>
+                </div>
+              </div>
+              
+              <div v-if="log.progreso > 0" class="text-gray-600 dark:text-gray-300 mb-1">
+                📊 Progreso reportado: <strong class="text-blue-600 dark:text-blue-400">{{ log.progreso }}%</strong>
+                <span v-if="log.tiempoTrabajado > 0" class="text-gray-400 dark:text-gray-500">
+                  ({{ formatTiempo(log.tiempoTrabajado) }} trabajados)
                 </span>
               </div>
-              <div v-if="log.progreso > 0" class="text-gray-500 dark:text-gray-400">
-                📊 Progreso: {{ log.progreso }}% ({{ formatTiempo(log.tiempoTrabajado) }} trabajados)
+              
+              <div v-if="log.motivo" 
+                   class="bg-yellow-50 dark:bg-yellow-900/20 border-l-2 border-yellow-400 dark:border-yellow-600 pl-2 py-1 mt-2 rounded-r">
+                <p class="text-gray-700 dark:text-gray-300 italic text-[11px]">
+                  💬 "{{ log.motivo }}"
+                </p>
               </div>
-              <div v-if="log.motivo" class="text-gray-400 dark:text-gray-500 text-[10px]">
-                💬 {{ log.motivo }}
+              
+              <div v-if="log.por && log.por !== 'Sistema'" 
+                   class="flex items-center gap-2 mt-2 text-gray-500 dark:text-gray-400 text-[10px]">
+                <span>👤 {{ log.por }}</span>
+                <span class="px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-600">
+                  {{ getRolLabel(log.rol) }}
+                </span>
               </div>
-              <div v-if="log.por && log.por !== 'Sistema'" class="text-gray-400 dark:text-gray-500 text-[10px]">
-                👤 {{ log.por }} ({{ log.rol }})
+              <div v-else-if="log.por === 'Sistema'" 
+                   class="flex items-center gap-2 mt-2 text-gray-400 dark:text-gray-500 text-[10px]">
+                <span>🤖 Sistema (auto-cierre)</span>
               </div>
-              <div v-if="log.tecnicoAnterior" class="text-gray-400 dark:text-gray-500 text-[10px]">
-                🔄 {{ log.tecnicoAnterior }} → {{ log.tecnicoNuevo }}
+              
+              <div v-if="log.tecnicoAnterior || log.tecnicoNuevo" 
+                   class="flex items-center gap-2 mt-2 text-[11px] text-purple-600 dark:text-purple-400">
+                <span>🔄 {{ log.tecnicoAnterior || 'Sin asignar' }}</span>
+                <span>→</span>
+                <span class="font-medium">{{ log.tecnicoNuevo }}</span>
               </div>
             </div>
           </div>
@@ -5080,6 +5251,13 @@ components\TarjetaModalProfesional.vue
                 </span>
               </p>
             </div>
+          </div>
+          
+          <div v-if="tarjeta.tiempoPausadoTotal > 0" class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-center">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              ⏸️ Tiempo pausado acumulado: 
+              <strong class="text-orange-600 dark:text-orange-400">{{ formatTiempo(tarjeta.tiempoPausadoTotal) }}</strong>
+            </p>
           </div>
         </div>
         
@@ -5124,9 +5302,6 @@ components\TarjetaModalProfesional.vue
               <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 💡 Ejemplos: 2h 30min, 1h 45min, 90min (solo minutos)
               </p>
-              <p v-if="tiempoEstimadoHoras > 0 && tiempoEstimadoMinutos > 59" class="text-xs text-red-500 dark:text-red-400 mt-1">
-                ⚠️ Cuando hay horas, los minutos no pueden ser mayores a 59
-              </p>
             </div>
             <button
               @click="guardarTiempoEstimado"
@@ -5143,10 +5318,29 @@ components\TarjetaModalProfesional.vue
         </div>
         
         <!-- ============================================================
+             CALIFICACIÓN (solo lectura si ya está calificada)
+             ============================================================ -->
+        <div v-if="tarjeta.calificacion?.puntaje" 
+             class="bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
+          <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
+            ⭐ Calificación del cliente
+          </h4>
+          <div class="flex items-center gap-2">
+            <span class="text-yellow-500 text-2xl">{{ '★'.repeat(tarjeta.calificacion.puntaje) }}{{ '☆'.repeat(5 - tarjeta.calificacion.puntaje) }}</span>
+            <span class="font-bold text-gray-700 dark:text-gray-300">{{ tarjeta.calificacion.puntaje }}/5</span>
+          </div>
+          <p v-if="tarjeta.calificacion.comentario" class="text-sm text-gray-600 dark:text-gray-400 italic mt-2">
+            "{{ tarjeta.calificacion.comentario }}"
+          </p>
+          <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+            {{ formatFechaHora(tarjeta.calificacion.fecha) }}
+          </p>
+        </div>
+        
+        <!-- ============================================================
              BOTONES DE ACCIÓN
              ============================================================ -->
         <div class="flex flex-wrap gap-3 pt-3">
-          <!-- Auto-asignarse -->
           <button 
             v-if="puedeAutoAsignar" 
             @click="autoAsignar" 
@@ -5155,7 +5349,6 @@ components\TarjetaModalProfesional.vue
             🎯 Auto-asignarme
           </button>
           
-          <!-- Asignar por supervisor -->
           <button 
             v-if="puedeAsignarJefe" 
             @click="abrirAsignarEmpleado" 
@@ -5164,7 +5357,6 @@ components\TarjetaModalProfesional.vue
             👥 Asignar a técnico
           </button>
           
-          <!-- 🔥 DEVOLVER TAREA (solo técnico, tarea sin tiempo) -->
           <button 
             v-if="puedeDevolver" 
             @click="devolverTarea" 
@@ -5173,7 +5365,6 @@ components\TarjetaModalProfesional.vue
             ↩️ Devolver tarea
           </button>
           
-          <!-- 🔥 REASIGNAR (solo supervisor) -->
           <button 
             v-if="puedeReasignar" 
             @click="abrirReasignarModal" 
@@ -5182,7 +5373,6 @@ components\TarjetaModalProfesional.vue
             👥 Reasignar
           </button>
           
-          <!-- Iniciar tarea -->
           <button 
             v-if="puedeIniciar" 
             @click="iniciarTarea" 
@@ -5192,7 +5382,6 @@ components\TarjetaModalProfesional.vue
             {{ tiempoEstimadoActual === 0 ? '⚠️ Guarda el tiempo primero' : '🚀 Iniciar tarea' }}
           </button>
           
-          <!-- Reanudar -->
           <button 
             v-if="puedeReanudar" 
             @click="reanudarTarea" 
@@ -5201,7 +5390,6 @@ components\TarjetaModalProfesional.vue
             ▶️ Reanudar
           </button>
           
-          <!-- Pausar -->
           <button 
             v-if="puedePausar" 
             @click="pausarTarea" 
@@ -5210,37 +5398,9 @@ components\TarjetaModalProfesional.vue
             ⏸️ Pausar
           </button>
           
-          <!-- Registrar progreso -->
-          <button 
-            v-if="puedeRegistrarProgreso" 
-            @click="abrirRegistrarProgreso" 
-            class="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2.5 rounded-lg hover:from-purple-600 hover:to-purple-700 transition font-medium"
-          >
-            📊 Registrar progreso
-          </button>
-          
-          <!-- Aprobar tarea (solo supervisor) -->
-          <button 
-            v-if="puedeAprobar" 
-            @click="aprobarTarea" 
-            class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 rounded-lg hover:from-green-600 hover:to-green-700 transition font-medium"
-          >
-            ✅ Aprobar tarea
-          </button>
-          
-          <!-- Calificar (solo usuario) -->
-          <button 
-            v-if="puedeCalificar" 
-            @click="abrirCalificar" 
-            class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2.5 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition font-medium"
-          >
-            ⭐ Calificar servicio
-          </button>
-          
-          <!-- Finalizar tarea (técnico, con tiempo estimado) -->
           <button 
             v-if="puedeFinalizar" 
-            @click="finalizarTarea" 
+            @click="abrirModalFinalizar" 
             class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2.5 rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition font-medium"
           >
             ✅ Finalizar tarea
@@ -5288,7 +5448,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'update', 'calificar']);
+const emit = defineEmits(['close', 'update']);
 
 const authStore = useAuthStore();
 const tarjetasStore = useTarjetasStore();
@@ -5315,7 +5475,8 @@ const formatFechaHora = (date) => {
 };
 
 const formatTiempo = (minutos) => {
-  if (!minutos || minutos === 0) return '0 min';
+  if (!minutos && minutos !== 0) return '0 min';
+  if (minutos === 0) return '0 min';
   const horas = Math.floor(minutos / 60);
   const mins = minutos % 60;
   if (horas === 0) return `${mins} min`;
@@ -5323,19 +5484,39 @@ const formatTiempo = (minutos) => {
   return `${horas}h ${mins}min`;
 };
 
+// ============================================================
+// HELPERS PARA EL HISTORIAL
+// ============================================================
+const getTipoIcono = (tipo) => {
+  const map = {
+    'sugerido_supervisor': '📌',
+    'estimado_tecnico': '⏱️',
+    'recalculado_progreso': '🔄',
+    'tarea_iniciada': '▶️',
+    'tarea_pausada': '⏸️',
+    'tarea_reanudada': '▶️',
+    'tarea_finalizada': '✅',
+    'tarea_auto_finalizada': '🤖',
+    'tarea_devuelta': '↩️',
+    'tarea_reasignada': '🔄',
+    'tiempo_estimado_tecnico_reasignacion': '⏱️'
+  };
+  return map[tipo] || '📝';
+};
+
 const getTipoLabel = (tipo) => {
   const map = {
-    'sugerido_supervisor': '📌 Sugerido por supervisor',
-    'estimado_tecnico': '⏱️ Estimado por técnico',
-    'recalculado_progreso': '🔄 Recalculado por progreso',
-    'tarea_iniciada': '▶️ Tarea iniciada',
-    'tarea_pausada': '⏸️ Tarea pausada',
-    'tarea_reanudada': '▶️ Tarea reanudada',
-    'tarea_finalizada': '✅ Tarea finalizada',
-    'tarea_auto_finalizada': '🤖 Auto-finalizada',
-    'tarea_devuelta': '↩️ Tarea devuelta',
-    'tarea_reasignada': '🔄 Tarea reasignada',
-    'tiempo_estimado_tecnico_reasignacion': '⏱️ Estimado (reasignación)'
+    'sugerido_supervisor': 'Sugerido por supervisor',
+    'estimado_tecnico': 'Estimado por técnico',
+    'recalculado_progreso': 'Recalculado por progreso',
+    'tarea_iniciada': 'Tarea iniciada',
+    'tarea_pausada': 'Tarea pausada',
+    'tarea_reanudada': 'Tarea reanudada',
+    'tarea_finalizada': 'Tarea finalizada',
+    'tarea_auto_finalizada': 'Auto-finalizada',
+    'tarea_devuelta': 'Tarea devuelta',
+    'tarea_reasignada': 'Tarea reasignada',
+    'tiempo_estimado_tecnico_reasignacion': 'Estimado (reasignación)'
   };
   return map[tipo] || tipo;
 };
@@ -5376,6 +5557,16 @@ const getEficienciaColor = (eficiencia) => {
   return map[eficiencia] || 'bg-gray-100 text-gray-700';
 };
 
+const getRolLabel = (rol) => {
+  const map = {
+    'supervisor': 'Supervisor',
+    'tecnico': 'Técnico',
+    'usuario': 'Usuario',
+    'Sistema': 'Sistema'
+  };
+  return map[rol] || rol;
+};
+
 // ============================================================
 // COMPUTED - PERMISOS
 // ============================================================
@@ -5395,7 +5586,6 @@ const puedeAsignarJefe = computed(() => {
          props.tarjeta.estado === 'pendiente';
 });
 
-// 🔥 Puede devolver: técnico asignado, tarea en progreso, SIN tiempo estimado, 0% progreso
 const puedeDevolver = computed(() => {
   return esAsignadoAMi.value && 
          props.tarjeta.estado === 'en_progreso' && 
@@ -5403,19 +5593,16 @@ const puedeDevolver = computed(() => {
          props.tarjeta.porcentajeCompletado === 0;
 });
 
-// 🔥 Puede reasignar: supervisor, tarea en progreso o pendiente, CON técnico asignado
 const puedeReasignar = computed(() => {
   return authStore.isSupervisor && 
-         (props.tarjeta.estado === 'en_progreso' || props.tarjeta.estado === 'pendiente') &&
+         props.tarjeta.estado === 'en_progreso' &&
          props.tarjeta.asignadoA;
 });
 
-// 🔥 Puede finalizar: técnico asignado, tarea en progreso, CON tiempo estimado, >0% progreso
 const puedeFinalizar = computed(() => {
   return esAsignadoAMi.value && 
          props.tarjeta.estado === 'en_progreso' && 
-         props.tarjeta.tiempoEstimadoEmpleado > 0 &&
-         props.tarjeta.porcentajeCompletado > 0;
+         props.tarjeta.tiempoEstimadoEmpleado > 0;
 });
 
 const puedeIniciar = computed(() => {
@@ -5436,24 +5623,6 @@ const puedePausar = computed(() => {
   return esAsignadoAMi.value && 
          props.tarjeta.estado === 'en_progreso' && 
          props.tarjeta.estadoProgreso === 'activa';
-});
-
-const puedeRegistrarProgreso = computed(() => {
-  return esAsignadoAMi.value && 
-         props.tarjeta.estado === 'en_progreso' && 
-         props.tarjeta.tiempoEstimadoEmpleado > 0 &&
-         (props.tarjeta.estadoProgreso === 'activa' || props.tarjeta.tiempoAcumulado > 0);
-});
-
-const puedeAprobar = computed(() => {
-  return authStore.isSupervisor && props.tarjeta.estado === 'revision_jefe';
-});
-
-const puedeCalificar = computed(() => {
-  return authStore.isUsuario && 
-         props.tarjeta.estado === 'revision_cliente' && 
-         !props.tarjeta.calificacion &&
-         props.tarjeta.clienteInfo?.userId === authStore.user?._id;
 });
 
 // ============================================================
@@ -5480,9 +5649,7 @@ const calcularTiempoTrabajado = () => {
   return tiempo;
 };
 
-const tiempoRealTrabajado = computed(() => {
-  return calcularTiempoTrabajado();
-});
+const tiempoRealTrabajado = computed(() => calcularTiempoTrabajado());
 
 const tiempoRealTrabajadoFormateado = computed(() => {
   return formatTiempo(tiempoRealTrabajado.value);
@@ -5494,9 +5661,7 @@ const tiempoTotalMinutos = computed(() => {
   return (horas * 60) + minutos;
 });
 
-const tiempoValido = computed(() => {
-  return tiempoTotalMinutos.value > 0;
-});
+const tiempoValido = computed(() => tiempoTotalMinutos.value > 0);
 
 // ============================================================
 // COMPUTED - ESTILOS
@@ -5511,9 +5676,9 @@ const prioridadMap = {
 const estadoMap = {
   pendiente: { texto: '📋 Pendiente', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
   en_progreso: { texto: '⚙️ En Progreso', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
-  revision_jefe: { texto: '👔 Revisión Supervisor', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  revision_supervisor: { texto: '👔 Revisión Supervisor', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
   revision_cliente: { texto: '⭐ Revisión Usuario', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
-  finalizada: { texto: '🏁 Finalizada', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' }
+  finalizada: { texto: '✅ Finalizada', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' }
 };
 
 const prioridadTexto = computed(() => prioridadMap[props.tarjeta.prioridad]?.texto || 'Media');
@@ -5579,8 +5744,6 @@ const guardarTiempoEstimado = async () => {
 };
 
 const iniciarTarea = async () => {
-  console.log('🚀 [INICIAR-TAREA] Iniciando tarea...');
-  
   if (!props.tarjeta.tiempoEstimadoEmpleado || props.tarjeta.tiempoEstimadoEmpleado === 0) {
     alert('⚠️ Debes establecer un tiempo estimado antes de iniciar la tarea.');
     return;
@@ -5592,14 +5755,7 @@ const iniciarTarea = async () => {
     
     const response = await $fetch(url, {
       method: 'PUT',
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: { 
-        tiempoEstimadoHoras: 0, 
-        tiempoEstimadoMinutos: 0 
-      }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     
     if (response._id) {
@@ -5668,7 +5824,7 @@ const handleAsignado = () => {
   emit('close');
 };
 
-const abrirRegistrarProgreso = () => {
+const abrirModalFinalizar = () => {
   modalRegistrarProgreso.value = true;
 };
 
@@ -5677,29 +5833,6 @@ const handleUpdated = () => {
   emit('update');
   emit('close');
 };
-
-const aprobarTarea = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    await $fetch(`${config.public.apiBase}/tarjetas/${props.tarjeta._id}/aprobar-jefe`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    alert('✅ Tarea aprobada');
-    emit('update');
-    emit('close');
-  } catch (error) {
-    alert('Error al aprobar');
-  }
-};
-
-const abrirCalificar = () => {
-  emit('calificar', props.tarjeta);
-};
-
-// ============================================================
-// 🔥 NUEVAS ACCIONES: DEVOLVER, REASIGNAR, FINALIZAR
-// ============================================================
 
 const devolverTarea = async () => {
   if (!confirm('¿Estás seguro de que quieres devolver esta tarea? Se pondrá disponible para otros técnicos.')) {
@@ -5728,37 +5861,18 @@ const handleReasignado = () => {
   emit('close');
 };
 
-const finalizarTarea = async () => {
-  if (!confirm('¿Estás seguro de que quieres finalizar esta tarea? Se enviará a revisión del supervisor.')) {
-    return;
-  }
-  
-  try {
-    const comentario = prompt('Comentario sobre la finalización (opcional):');
-    await tarjetasStore.finalizarTarea(props.tarjeta._id, comentario || '');
-    alert('✅ Tarea finalizada exitosamente');
-    emit('update');
-    emit('close');
-  } catch (error) {
-    console.error('❌ Error finalizando tarea:', error);
-    alert('Error al finalizar la tarea: ' + (error.message || 'Error desconocido'));
-  }
-};
-
 // ============================================================
 // LIFECYCLE
 // ============================================================
 const cargarTiempo = () => {
-  console.log('📋 [TarjetaModalProfesional] Cargando tiempo...');
-  
   if (props.tarjeta.tiempoEstimadoEmpleado > 0) {
     const horas = Math.floor(props.tarjeta.tiempoEstimadoEmpleado / 60);
     const minutos = props.tarjeta.tiempoEstimadoEmpleado % 60;
     tiempoEstimadoHoras.value = horas;
     tiempoEstimadoMinutos.value = minutos;
-  } else if (props.tarjeta.tiempoSugeridoJefe > 0) {
-    const horas = Math.floor(props.tarjeta.tiempoSugeridoJefe / 60);
-    const minutos = props.tarjeta.tiempoSugeridoJefe % 60;
+  } else if (props.tarjeta.tiempoSugeridoSupervisor > 0) {
+    const horas = Math.floor(props.tarjeta.tiempoSugeridoSupervisor / 60);
+    const minutos = props.tarjeta.tiempoSugeridoSupervisor % 60;
     tiempoEstimadoHoras.value = horas;
     tiempoEstimadoMinutos.value = minutos;
   } else {
@@ -7458,21 +7572,6 @@ pages\tecnico\index.vue
                 <div>📅 {{ new Date(tarea.createdAt).toLocaleDateString() }}</div>
               </div>
               
-              <!-- Mostrar progreso si la tarea ya tiene tiempo estimado -->
-              <div v-if="tarea.tiempoEstimadoEmpleado > 0" class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex justify-between text-xs">
-                  <span class="text-gray-500">Progreso:</span>
-                  <span class="font-medium text-blue-600">{{ calcularProgresoReal(tarea) }}%</span>
-                </div>
-                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
-                  <div class="bg-blue-500 rounded-full h-1.5 transition-all duration-500" :style="{ width: `${calcularProgresoReal(tarea)}%` }"></div>
-                </div>
-                <div class="flex justify-between text-xs text-gray-400 mt-1">
-                  <span>⏱️ {{ formatTiempo(calcularTiempoTranscurrido(tarea)) }}</span>
-                  <span>🎯 {{ formatTiempo(tarea.tiempoEstimadoEmpleado) }}</span>
-                </div>
-              </div>
-              
               <button 
                 class="mt-3 w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-1.5 rounded text-sm hover:from-green-600 hover:to-green-700 transition"
                 @click.stop="tomarTareaEspecifica(tarea._id)"
@@ -7500,7 +7599,9 @@ pages\tecnico\index.vue
           </div>
           
           <div v-else class="space-y-4">
-            <!-- Tarea Activa -->
+            <!-- ============================================================ -->
+            <!-- TAREA ACTIVA (con tiempo en vivo)                            -->
+            <!-- ============================================================ -->
             <div v-if="tareaActiva" class="border-2 border-green-500 bg-gradient-to-r from-green-50 to-white dark:from-green-900/20 dark:to-gray-800 rounded-xl p-5 shadow-md">
               <div class="flex justify-between items-start mb-3">
                 <div class="flex items-center gap-2">
@@ -7517,23 +7618,61 @@ pages\tecnico\index.vue
               </div>
               <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ tareaActiva.descripcion || 'Sin descripción' }}</p>
               
-              <div class="grid grid-cols-2 gap-4 text-sm mb-4">
-                <div>
-                  <span class="text-gray-500 dark:text-gray-400">Progreso:</span>
-                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
-                    <div class="bg-green-500 rounded-full h-2 transition-all duration-500" :style="{ width: `${calcularProgresoReal(tareaActiva)}%` }"></div>
+              <!-- TIEMPO EN VIVO -->
+              <div class="grid grid-cols-3 gap-3 text-sm mb-4">
+                <div class="bg-white dark:bg-gray-900 rounded-lg p-3 text-center">
+                  <span class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Tiempo trabajado</span>
+                  <div class="flex items-center justify-center gap-1">
+                    <span class="font-bold text-green-600 dark:text-green-400 text-lg font-mono">
+                      {{ formatTiempo(calcularTiempoTranscurrido(tareaActiva)) }}
+                    </span>
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" title="Contando en vivo"></span>
                   </div>
-                  <span class="text-xs font-medium text-green-600">{{ calcularProgresoReal(tareaActiva) }}%</span>
-                  <span class="text-xs text-gray-400 ml-2">({{ formatTiempo(calcularTiempoTranscurrido(tareaActiva)) }} trabajados)</span>
                 </div>
-                <div>
-                  <span class="text-gray-500 dark:text-gray-400">Tiempo estimado:</span>
-                  <span class="font-medium ml-1 text-blue-600">{{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}</span>
+                <div class="bg-white dark:bg-gray-900 rounded-lg p-3 text-center">
+                  <span class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Tiempo estimado</span>
+                  <span class="font-bold text-blue-600 dark:text-blue-400 text-lg font-mono">
+                    {{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado) }}
+                  </span>
+                </div>
+                <div class="bg-white dark:bg-gray-900 rounded-lg p-3 text-center">
+                  <span class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Restante</span>
+                  <span 
+                    class="font-bold text-lg font-mono"
+                    :class="calcularTiempoRestante(tareaActiva) > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'"
+                  >
+                    {{ calcularTiempoRestante(tareaActiva) > 0 ? formatTiempo(calcularTiempoRestante(tareaActiva)) : 'Excedido' }}
+                  </span>
                 </div>
               </div>
               
-              <!-- Mostrar el nombre completo del usuario que solicitó -->
-              <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 text-sm">
+              <!-- Diferencia entre real y estimado -->
+              <div v-if="tareaActiva.tiempoEstimadoEmpleado > 0" 
+                   class="text-xs p-2 rounded-lg mb-4"
+                   :class="calcularTiempoTranscurrido(tareaActiva) <= tareaActiva.tiempoEstimadoEmpleado 
+                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                     : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'">
+                <span v-if="calcularTiempoTranscurrido(tareaActiva) <= tareaActiva.tiempoEstimadoEmpleado">
+                  ✅ Llevas {{ formatTiempo(tareaActiva.tiempoEstimadoEmpleado - calcularTiempoTranscurrido(tareaActiva)) }} de margen
+                </span>
+                <span v-else>
+                  ⚠️ Excedido por {{ formatTiempo(calcularTiempoTranscurrido(tareaActiva) - tareaActiva.tiempoEstimadoEmpleado) }}
+                </span>
+              </div>
+              
+              <!-- Progreso -->
+              <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-gray-500 dark:text-gray-400">Progreso:</span>
+                  <span class="font-bold text-green-600">{{ calcularProgresoReal(tareaActiva) }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div class="bg-green-500 rounded-full h-2 transition-all duration-500" :style="{ width: `${calcularProgresoReal(tareaActiva)}%` }"></div>
+                </div>
+              </div>
+              
+              <!-- Información del cliente -->
+              <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" class="mb-4 pt-3 border-t border-gray-200 dark:border-gray-700 text-sm">
                 <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                   <span>👤 Usuario:</span>
                   <span class="font-medium">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
@@ -7541,7 +7680,8 @@ pages\tecnico\index.vue
                 </div>
               </div>
               
-              <div class="flex gap-3">
+              <!-- BOTONES: Pausar / Finalizar -->
+              <div class="flex flex-wrap gap-3">
                 <button 
                   @click="pausarTarea(tareaActiva._id)"
                   class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition text-sm font-medium"
@@ -7550,14 +7690,16 @@ pages\tecnico\index.vue
                 </button>
                 <button 
                   @click="abrirModalProgreso(tareaActiva)"
-                  class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition text-sm font-medium"
+                  class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2 rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition text-sm font-medium"
                 >
-                  📊 Registrar progreso
+                  ✅ Finalizar tarea
                 </button>
               </div>
             </div>
             
-            <!-- Tareas Pausadas -->
+            <!-- ============================================================ -->
+            <!-- TAREAS PAUSADAS                                              -->
+            <!-- ============================================================ -->
             <div v-for="tarea in tareasPausadas" :key="tarea._id" 
                  class="border border-yellow-200 dark:border-yellow-800 bg-gradient-to-r from-yellow-50 to-white dark:from-yellow-900/20 dark:to-gray-800 rounded-xl p-4">
               <div class="flex justify-between items-start mb-2">
@@ -7573,23 +7715,35 @@ pages\tecnico\index.vue
               </div>
               <p class="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">{{ tarea.descripcion || 'Sin descripción' }}</p>
               
-              <div class="grid grid-cols-2 gap-4 text-sm mb-3">
-                <div>
-                  <span class="text-gray-500 dark:text-gray-400">Progreso:</span>
-                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
-                    <div class="bg-blue-500 rounded-full h-2 transition-all duration-500" :style="{ width: `${calcularProgresoReal(tarea)}%` }"></div>
-                  </div>
-                  <span class="text-xs font-medium text-blue-600">{{ calcularProgresoReal(tarea) }}%</span>
-                  <span class="text-xs text-gray-400 ml-2">({{ formatTiempo(calcularTiempoTranscurrido(tarea)) }} trabajados)</span>
+              <!-- TIEMPO (pausada = sin contador en vivo) -->
+              <div class="grid grid-cols-2 gap-3 text-sm mb-3">
+                <div class="bg-white dark:bg-gray-900 rounded-lg p-2 text-center">
+                  <span class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Tiempo trabajado</span>
+                  <span class="font-bold text-green-600 dark:text-green-400 font-mono">
+                    {{ formatTiempo(tarea.tiempoAcumulado || 0) }}
+                  </span>
                 </div>
-                <div>
-                  <span class="text-gray-500 dark:text-gray-400">Tiempo estimado:</span>
-                  <span class="font-medium ml-1 text-blue-600">{{ formatTiempo(tarea.tiempoEstimadoEmpleado) }}</span>
+                <div class="bg-white dark:bg-gray-900 rounded-lg p-2 text-center">
+                  <span class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Tiempo estimado</span>
+                  <span class="font-bold text-blue-600 dark:text-blue-400 font-mono">
+                    {{ tarea.tiempoEstimadoEmpleado > 0 ? formatTiempo(tarea.tiempoEstimadoEmpleado) : 'Sin definir' }}
+                  </span>
                 </div>
               </div>
               
-              <!-- Mostrar el nombre completo del usuario que solicitó -->
-              <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-sm">
+              <!-- Progreso -->
+              <div class="mb-3">
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-gray-500 dark:text-gray-400">Progreso:</span>
+                  <span class="font-medium text-blue-600">{{ tarea.porcentajeCompletado || 0 }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div class="bg-blue-500 rounded-full h-2 transition-all duration-500" :style="{ width: `${tarea.porcentajeCompletado || 0}%` }"></div>
+                </div>
+              </div>
+              
+              <!-- Información del cliente -->
+              <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mb-3 pt-2 border-t border-gray-200 dark:border-gray-700 text-sm">
                 <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                   <span>👤 Usuario:</span>
                   <span class="font-medium">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
@@ -7597,7 +7751,8 @@ pages\tecnico\index.vue
                 </div>
               </div>
               
-              <div class="flex gap-3">
+              <!-- BOTONES: Establecer tiempo / Reanudar / Finalizar -->
+              <div class="flex flex-wrap gap-3">
                 <button 
                   v-if="tarea.tiempoEstimadoEmpleado === 0"
                   @click="abrirModalTiempo(tarea)"
@@ -7613,10 +7768,11 @@ pages\tecnico\index.vue
                   ▶️ Reanudar
                 </button>
                 <button 
+                  v-if="tarea.tiempoEstimadoEmpleado > 0"
                   @click="abrirModalProgreso(tarea)"
-                  class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition text-sm font-medium"
+                  class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2 rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition text-sm font-medium"
                 >
-                  📊 Registrar progreso
+                  ✅ Finalizar tarea
                 </button>
               </div>
             </div>
@@ -7647,6 +7803,13 @@ pages\tecnico\index.vue
                   <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Completada: {{ new Date(tarea.fechaFinalizada || tarea.updatedAt).toLocaleDateString() }}
                   </p>
+                  <!-- Mostrar tiempo real vs estimado en tareas completadas -->
+                  <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    ⏱️ Real: <strong class="text-green-600 dark:text-green-400">{{ formatTiempo(calcularTiempoTotalReal(tarea)) }}</strong>
+                    <span v-if="tarea.tiempoEstimadoEmpleado > 0" class="text-gray-400">
+                      / Estimado: <strong>{{ formatTiempo(tarea.tiempoEstimadoEmpleado) }}</strong>
+                    </span>
+                  </p>
                 </div>
                 <div v-if="tarea.calificacion?.puntaje" class="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-3 py-1 rounded-full">
                   <span class="text-yellow-500">★</span>
@@ -7657,7 +7820,6 @@ pages\tecnico\index.vue
                 </span>
                 <span v-else class="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">Sin calificar</span>
               </div>
-              <!-- Mostrar el nombre completo del usuario que solicitó -->
               <div v-if="tarea.tipo === 'solicitud_cliente' && tarea.clienteInfo" class="mt-2 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
                 <span>👤 Solicitado por:</span>
                 <span class="font-medium text-gray-600 dark:text-gray-400">{{ tarea.clienteInfo.nombre || 'Anónimo' }}</span>
@@ -7682,7 +7844,7 @@ pages\tecnico\index.vue
       v-if="tareaParaProgreso"
       :tarjeta="tareaParaProgreso"
       @close="tareaParaProgreso = null"
-      @updated="recargarDatos"
+      @updated="handleTareaFinalizada"
     />
     
     <SolicitudModal
@@ -7713,7 +7875,6 @@ const authStore = useAuthStore();
 const tarjetasStore = useTarjetasStore();
 const { isTecnico } = useRoles();
 
-// Verificar que sea técnico
 if (!isTecnico.value) {
   console.warn('⚠️ [Tecnico] Usuario no es técnico, redirigiendo...');
   navigateTo('/');
@@ -7738,7 +7899,7 @@ let pollingInterval = null;
 const forceUpdate = ref(0);
 
 // ============================================================
-// FUNCIONES DE CÁLCULO DE PROGRESO EN TIEMPO REAL
+// FUNCIONES DE CÁLCULO DE PROGRESO Y TIEMPO EN VIVO
 // ============================================================
 
 const calcularProgresoReal = (tarea) => {
@@ -7775,6 +7936,34 @@ const calcularTiempoTranscurrido = (tarea) => {
   }
   
   return tiempoTotal;
+};
+
+const calcularTiempoRestante = (tarea) => {
+  if (!tarea) return 0;
+  const estimado = tarea.tiempoEstimadoEmpleado || 0;
+  const transcurrido = calcularTiempoTranscurrido(tarea);
+  return Math.max(0, estimado - transcurrido);
+};
+
+// Tiempo real total de una tarea finalizada
+const calcularTiempoTotalReal = (tarea) => {
+  if (!tarea) return 0;
+  
+  if (tarea.tiempoAcumulado && tarea.tiempoAcumulado > 0) {
+    return tarea.tiempoAcumulado;
+  }
+  
+  if (tarea.horasTotalesReales || tarea.minutosTotalesReales) {
+    return ((tarea.horasTotalesReales || 0) * 60) + (tarea.minutosTotalesReales || 0);
+  }
+  
+  if (tarea.registroHoras?.length) {
+    return tarea.registroHoras.reduce((sum, reg) => {
+      return sum + ((reg.horasTrabajadas || 0) * 60) + (reg.minutosTrabajados || 0);
+    }, 0);
+  }
+  
+  return 0;
 };
 
 // ============================================================
@@ -7853,17 +8042,9 @@ const configurarSockets = () => {
   console.log('✅ [Tecnico] Socket disponible para actualizaciones en tiempo real');
   console.log('🔌 [Tecnico] Socket ID:', socket.value.id);
   
-  // EVENTO CRÍTICO: Nueva tarea disponible
   socket.value.on('nueva-tarea-disponible', (data) => {
-    console.log('========================================');
-    console.log('📢 [Tecnico][SOCKET] ✅ NUEVA TAREA DISPONIBLE!');
-    console.log(`   📌 Título: ${data.tarea?.titulo}`);
-    console.log(`   🆔 ID: ${data.tarea?._id}`);
-    console.log('========================================');
-    
-    // Recargar tareas disponibles y mis tareas
+    console.log('📢 [Tecnico][SOCKET] NUEVA TAREA DISPONIBLE:', data.tarea?.titulo);
     recargarDatos();
-    
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('📋 Nueva tarea disponible', {
         body: `${data.tarea?.titulo || 'Nueva tarea'}`,
@@ -7872,17 +8053,14 @@ const configurarSockets = () => {
     }
   });
   
-  // Tarea tomada por otro empleado
   socket.value.on('tarea-tomada', (data) => {
     console.log(`📢 [Tecnico][SOCKET] Tarea tomada por: ${data.empleado?.nombre}`);
     recargarDatos();
   });
   
-  // Tarea asignada a mí
   socket.value.on('tarea-asignada', (data) => {
     console.log(`📢 [Tecnico][SOCKET] Tarea asignada: ${data.tarea?.titulo}`);
     if (data.tarea?.asignadoA?._id === authStore.user?._id) {
-      console.log('🎯 [Tecnico][SOCKET] ¡Esta tarea es para ti!');
       recargarDatos();
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('📋 Tarea asignada', {
@@ -7893,62 +8071,48 @@ const configurarSockets = () => {
     }
   });
   
-  // Estado actualizado (progreso)
   socket.value.on('estado-actualizado', (data) => {
-    console.log(`📊 [Tecnico][SOCKET] Estado actualizado: ${data.porcentaje}%`);
     if (data.empleadoId === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Estado general actualizado
   socket.value.on('estado-general-actualizado', (data) => {
-    console.log(`🔄 [Tecnico][SOCKET] Estado general actualizado`);
     const tarea = tarjetasStore.tarjetas.find(t => t._id === data.tareaId);
     if (tarea && tarea.asignadoA?._id === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Tarea iniciada
   socket.value.on('tarea-iniciada-tiempo-real', (data) => {
-    console.log(`🚀 [Tecnico][SOCKET] Tarea iniciada`);
     if (data.empleado?.id === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Tarea pausada
   socket.value.on('tarea-pausada-tiempo-real', (data) => {
-    console.log(`⏸️ [Tecnico][SOCKET] Tarea pausada`);
     if (data.empleadoId === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Tarea reanudada
   socket.value.on('tarea-reanudada-tiempo-real', (data) => {
-    console.log(`▶️ [Tecnico][SOCKET] Tarea reanudada`);
     if (data.empleadoId === authStore.user?._id) {
       recargarDatos();
     }
   });
   
-  // Progreso actualizado
-  socket.value.on('progreso-actualizado', (data) => {
-    console.log(`📈 [Tecnico][SOCKET] Progreso actualizado`);
+  socket.value.on('progreso-actualizado', () => {
     recargarDatos();
   });
   
-  // Tarea completada automáticamente
   socket.value.on('tarea-completada-automaticamente', (data) => {
     console.log(`🎉 [Tecnico][SOCKET] Tarea completada automáticamente: ${data.titulo}`);
     recargarDatos();
   });
   
-  // Tarea aprobada por supervisor
   socket.value.on('tarea-aprobada-por-supervisor', (data) => {
-    console.log(`✅ [Tecnico][SOCKET] Tarea aprobada por supervisor: ${data.titulo}`);
+    console.log(`✅ [Tecnico][SOCKET] Tarea aprobada: ${data.titulo}`);
     recargarDatos();
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('✅ Tarea aprobada', {
@@ -7958,7 +8122,6 @@ const configurarSockets = () => {
     }
   });
   
-  // Tarea calificada
   socket.value.on('tarea-calificada', (data) => {
     console.log(`⭐ [Tecnico][SOCKET] Tarea calificada: ${data.titulo} - ${data.puntaje}★`);
     recargarDatos();
@@ -7970,53 +8133,52 @@ const configurarSockets = () => {
     }
   });
   
-  // Tarea finalizada sin cliente
-  socket.value.on('tarea-finalizada-sin-cliente', (data) => {
-    console.log(`✅ [Tecnico][SOCKET] Tarea finalizada: ${data.titulo}`);
+  socket.value.on('tarea-finalizada-sin-cliente', () => {
     recargarDatos();
   });
   
-  // Tarea auto-finalizada
-  socket.value.on('tarea-auto-finalizada', (data) => {
-    console.log(`🤖 [Tecnico][SOCKET] Tarea auto-finalizada: ${data.titulo}`);
+  socket.value.on('tarea-auto-finalizada', () => {
     recargarDatos();
   });
   
-  // Tiempo estimado establecido
-  socket.value.on('tiempo-estimado-establecido', (data) => {
-    console.log(`⏱️ [Tecnico][SOCKET] Tiempo estimado establecido`);
+  socket.value.on('tiempo-estimado-establecido', () => {
     recargarDatos();
   });
   
-  // Rol actualizado
+  // 🔥 NUEVO: Notificación al técnico que finalizó su propia tarea
+  socket.value.on('tarea-finalizada-por-ti', (data) => {
+    console.log('✅ [Tecnico][SOCKET] ✅ TAREA FINALIZADA POR TI:', data.titulo);
+    console.log('   🔄 Recargando datos...');
+    recargarDatos();
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('✅ Tarea finalizada', {
+        body: data.mensaje || `Tarea "${data.titulo}" enviada a revisión`,
+        icon: '/favicon.ico'
+      });
+    }
+  });
+  
   socket.value.on('rol-actualizado', (data) => {
-    console.log('🔄 [Tecnico][SOCKET] Rol actualizado:', data);
-    console.log(`   👤 Usuario: ${data.userId}`);
-    console.log(`   🆕 Nuevo rol: ${data.nuevoRol}`);
-    
     if (data.userId === authStore.user?._id) {
-      console.log(`👤 [Tecnico] Tu rol ha cambiado a: ${data.nuevoRol}`);
       authStore.user.rol = data.nuevoRol;
       localStorage.setItem('user', JSON.stringify(authStore.user));
-      
       alert(`✅ Tu rol ha sido actualizado a: ${data.nuevoRol}`);
-      
       setTimeout(() => {
         window.location.reload();
       }, 1500);
     }
   });
   
-  // Iniciar intervalo para actualizar el progreso visual
+  // Intervalo para actualizar el tiempo en vivo (cada 15 segundos)
   intervaloTiempoReal = setInterval(() => {
     forceUpdate.value++;
-  }, 5000);
+  }, 15000);
   
   console.log('✅ [Tecnico] Todos los eventos de socket configurados');
 };
 
 // ============================================================
-// FALLBACK - POLLING (si no hay sockets)
+// FALLBACK - POLLING
 // ============================================================
 
 const iniciarPollingFallback = () => {
@@ -8049,7 +8211,7 @@ const cargarTareasDisponibles = async () => {
 };
 
 const recargarDatos = async () => {
-  console.log('🔄 [Tecnico] 🔥 recargarDatos() llamado');
+  console.log('🔄 [Tecnico] recargarDatos() llamado');
   await tarjetasStore.fetchTarjetas();
   await cargarTareasDisponibles();
   forceUpdate.value++;
@@ -8145,6 +8307,24 @@ const handleTiempoEstablecido = async () => {
   await recargarDatos();
 };
 
+// 🔥 NUEVO: Función específica para cuando se finaliza la tarea desde el modal
+// Hace doble recarga (inmediata + a los 800ms) para asegurar que el backend
+// ya haya propagado el cambio de estado
+const handleTareaFinalizada = async () => {
+  console.log('✅ [Tecnico] Tarea finalizada desde el modal, recargando datos...');
+  tareaParaProgreso.value = null;
+  
+  // Primera recarga inmediata
+  await recargarDatos();
+  
+  // Segunda recarga diferida por si el backend tardó en guardar
+  setTimeout(async () => {
+    console.log('🔄 [Tecnico] Recarga diferida (800ms después)...');
+    await recargarDatos();
+    console.log('✅ [Tecnico] Recarga diferida completada');
+  }, 800);
+};
+
 const logout = () => {
   authStore.logout();
 };
@@ -8169,7 +8349,6 @@ onMounted(async () => {
   await recargarDatos();
   configurarSockets();
   
-  // Asegurar que el usuario se una al socket
   setTimeout(() => {
     const nuxtApp = useNuxtApp();
     if (nuxtApp.$socket && authStore.user?._id) {
@@ -8204,6 +8383,7 @@ onUnmounted(() => {
     socket.value.off('tarea-finalizada-sin-cliente');
     socket.value.off('tarea-auto-finalizada');
     socket.value.off('tiempo-estimado-establecido');
+    socket.value.off('tarea-finalizada-por-ti');
     socket.value.off('rol-actualizado');
   }
   
@@ -8735,7 +8915,7 @@ export default defineNuxtPlugin(() => {
     
     let socket = null;
     let reconnectAttempts = 0;
-    const maxReconnectAttempts = 20; // 🔥 20 intentos máximos (opcional, o Infinity)
+    const maxReconnectAttempts = 20;
     
     try {
       console.log('🔌 [Socket] Iniciando conexión a:', config.public.wsUrl);
@@ -8743,10 +8923,10 @@ export default defineNuxtPlugin(() => {
       socket = io(config.public.wsUrl, {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 20,        // 🔥 20 intentos (o Infinity)
+        reconnectionAttempts: 20,
         reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,      // 🔥 Máximo 5 segundos
-        timeout: 20000,                  // 🔥 20 segundos de timeout
+        reconnectionDelayMax: 5000,
+        timeout: 20000,
         autoConnect: true
       });
     } catch (error) {
@@ -8756,6 +8936,7 @@ export default defineNuxtPlugin(() => {
     if (socket) {
       const authStore = useAuthStore();
       const tarjetasStore = useTarjetasStore();
+      const empleadosStore = useEmpleadosStore();  // 🔥 NUEVO
       
       let updateEstadoCallback = null;
       let isUserJoined = false;
@@ -8781,6 +8962,22 @@ export default defineNuxtPlugin(() => {
       };
       
       // ============================================================
+      // 🔥 HELPER: Actualizar ambos stores
+      // ============================================================
+      
+      const actualizarAmbosStores = (nombreEvento) => {
+        console.log(`🔄 [Socket] Recargando stores por "${nombreEvento}"...`);
+        
+        tarjetasStore.fetchTarjetas()
+          .then(() => console.log(`   ✅ [Socket] Tarjetas OK`))
+          .catch(err => console.error(`   ❌ [Socket] Error tarjetas:`, err));
+        
+        empleadosStore.cargarEstadoTecnicos(`socket:${nombreEvento}`)
+          .then(() => console.log(`   ✅ [Socket] Empleados OK`))
+          .catch(err => console.error(`   ❌ [Socket] Error empleados:`, err));
+      };
+      
+      // ============================================================
       // EVENTOS DE CONEXIÓN
       // ============================================================
       
@@ -8797,10 +8994,6 @@ export default defineNuxtPlugin(() => {
       socket.on('connect_error', (error) => {
         reconnectAttempts++;
         console.warn(`⚠️ [Socket] Error de conexión (intento ${reconnectAttempts}/20):`, error.message);
-        
-        if (reconnectAttempts >= 20) {
-          console.warn('⚠️ [Socket] 20 intentos fallidos, seguirá intentando...');
-        }
       });
       
       socket.on('disconnect', (reason) => {
@@ -8832,7 +9025,6 @@ export default defineNuxtPlugin(() => {
       
       socket.on('reconnect_failed', () => {
         console.warn('⚠️ [Socket] Falló la reconexión después de 20 intentos');
-        console.log('🔄 [Socket] Continuará intentando...');
       });
       
       socket.on('connected', (data) => {
@@ -8861,7 +9053,7 @@ export default defineNuxtPlugin(() => {
       }, 3000);
       
       // ============================================================
-      // EVENTOS DE TIEMPO REAL
+      // EVENTOS DE TIEMPO REAL (con recarga de AMBOS stores)
       // ============================================================
       
       // Nueva tarea disponible
@@ -8871,9 +9063,10 @@ export default defineNuxtPlugin(() => {
         console.log(`   📌 Título: ${data.tarea?.titulo}`);
         console.log(`   🆔 ID: ${data.tarea?._id}`);
         console.log(`   📝 Mensaje: ${data.mensaje}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
         console.log('========================================');
         
-        tarjetasStore.fetchTarjetas();
+        actualizarAmbosStores('nueva-tarea-disponible');
         
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('📋 Nueva tarea disponible', {
@@ -8885,8 +9078,12 @@ export default defineNuxtPlugin(() => {
       
       // Tarea asignada
       socket.on('tarea-asignada', (data) => {
-        console.log(`📢 [Socket] Tarea asignada: ${data.tarea?.titulo}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`📢 [Socket] TAREA ASIGNADA: ${data.tarea?.titulo}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-asignada');
         
         if (data.tarea?.asignadoA?._id === authStore.user?._id) {
           if ('Notification' in window && Notification.permission === 'granted') {
@@ -8900,14 +9097,25 @@ export default defineNuxtPlugin(() => {
       
       // Tarea tomada por otro empleado
       socket.on('tarea-tomada', (data) => {
-        console.log(`📢 [Socket] Tarea tomada por: ${data.empleado?.nombre}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`📢 [Socket] TAREA TOMADA por: ${data.empleado?.nombre}`);
+        console.log(`   📌 Tarea: ${data.tarea?.titulo}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-tomada');
       });
       
       // Estado actualizado (progreso)
       socket.on('estado-actualizado', (data) => {
-        console.log(`📊 [Socket] Estado actualizado: ${data.porcentaje}% - ${data.estado}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`📊 [Socket] ESTADO ACTUALIZADO: ${data.porcentaje}%`);
+        console.log(`   🆔 Tarea ID: ${data.tareaId}`);
+        console.log(`   👤 Empleado: ${data.empleadoNombre}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('estado-actualizado');
         
         if (updateEstadoCallback) {
           updateEstadoCallback(data);
@@ -8916,8 +9124,15 @@ export default defineNuxtPlugin(() => {
       
       // Estado general actualizado
       socket.on('estado-general-actualizado', (data) => {
-        console.log(`🔄 [Socket] Estado general actualizado: ${data.titulo} -> ${data.estado}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`🔄 [Socket] ESTADO GENERAL ACTUALIZADO`);
+        console.log(`   📌 Tarea: ${data.titulo}`);
+        console.log(`   🔄 Estado: ${data.estado}`);
+        console.log(`   📊 Porcentaje: ${data.porcentaje}%`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('estado-general-actualizado');
         
         if (updateEstadoCallback) {
           updateEstadoCallback(data);
@@ -8926,8 +9141,12 @@ export default defineNuxtPlugin(() => {
       
       // Tarea completada automáticamente
       socket.on('tarea-completada-automaticamente', (data) => {
-        console.log(`🎉 [Socket] Tarea completada automáticamente: ${data.titulo}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`🎉 [Socket] TAREA COMPLETADA AUTOMÁTICAMENTE: ${data.titulo}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-completada-automaticamente');
         
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('✅ Tarea completada', {
@@ -8939,48 +9158,58 @@ export default defineNuxtPlugin(() => {
       
       // Tarea iniciada
       socket.on('tarea-iniciada-tiempo-real', (data) => {
-        console.log(`🚀 [Socket] Tarea iniciada: ${data.tarea?.titulo}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`🚀 [Socket] TAREA INICIADA: ${data.tarea?.titulo}`);
+        console.log(`   👤 Empleado: ${data.empleado?.nombre}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-iniciada-tiempo-real');
         
         if (updateEstadoCallback) {
-          updateEstadoCallback({
-            tipo: 'iniciada',
-            ...data
-          });
+          updateEstadoCallback({ tipo: 'iniciada', ...data });
         }
       });
       
       // Tarea pausada
       socket.on('tarea-pausada-tiempo-real', (data) => {
-        console.log(`⏸️ [Socket] Tarea pausada: ${data.tareaId}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`⏸️ [Socket] TAREA PAUSADA: ${data.tareaId}`);
+        console.log(`   👤 Empleado: ${data.empleadoNombre}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-pausada-tiempo-real');
         
         if (updateEstadoCallback) {
-          updateEstadoCallback({
-            tipo: 'pausada',
-            ...data
-          });
+          updateEstadoCallback({ tipo: 'pausada', ...data });
         }
       });
       
       // Tarea reanudada
       socket.on('tarea-reanudada-tiempo-real', (data) => {
-        console.log(`▶️ [Socket] Tarea reanudada: ${data.tareaId}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`▶️ [Socket] TAREA REANUDADA: ${data.tareaId}`);
+        console.log(`   👤 Empleado: ${data.empleadoNombre}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-reanudada-tiempo-real');
         
         if (updateEstadoCallback) {
-          updateEstadoCallback({
-            tipo: 'reanudada',
-            ...data
-          });
+          updateEstadoCallback({ tipo: 'reanudada', ...data });
         }
       });
       
       // Tarea lista para revisión (supervisor)
       socket.on('tarea-lista-para-revision', (data) => {
-        console.log(`👔 [Socket] Tarea lista para revisión: ${data.titulo}`);
+        console.log('========================================');
+        console.log(`👔 [Socket] TAREA LISTA PARA REVISIÓN: ${data.titulo}`);
         console.log(`   👤 Empleado: ${data.empleadoNombre}`);
-        tarjetasStore.fetchTarjetas();
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-lista-para-revision');
         
         if (authStore.isSupervisor) {
           if ('Notification' in window && Notification.permission === 'granted') {
@@ -8994,8 +9223,12 @@ export default defineNuxtPlugin(() => {
       
       // Tarea lista para calificar (usuario)
       socket.on('tarea-lista-para-calificar', (data) => {
-        console.log(`⭐ [Socket] Tarea lista para calificar: ${data.titulo}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`⭐ [Socket] TAREA LISTA PARA CALIFICAR: ${data.titulo}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-lista-para-calificar');
         
         if (authStore.isUsuario) {
           if ('Notification' in window && Notification.permission === 'granted') {
@@ -9009,8 +9242,13 @@ export default defineNuxtPlugin(() => {
       
       // Tarea calificada
       socket.on('tarea-calificada', (data) => {
-        console.log(`⭐ [Socket] Tarea calificada: ${data.titulo} - ${data.puntaje}★`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`⭐ [Socket] TAREA CALIFICADA: ${data.titulo}`);
+        console.log(`   ⭐ Puntaje: ${data.puntaje}★`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-calificada');
         
         if (authStore.isTecnico) {
           if ('Notification' in window && Notification.permission === 'granted') {
@@ -9024,8 +9262,12 @@ export default defineNuxtPlugin(() => {
       
       // Tarea finalizada sin cliente
       socket.on('tarea-finalizada-sin-cliente', (data) => {
-        console.log(`✅ [Socket] Tarea finalizada: ${data.titulo}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`✅ [Socket] TAREA FINALIZADA SIN CLIENTE: ${data.titulo}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-finalizada-sin-cliente');
         
         if (authStore.isUsuario) {
           if ('Notification' in window && Notification.permission === 'granted') {
@@ -9039,9 +9281,13 @@ export default defineNuxtPlugin(() => {
       
       // Tarea por expirar
       socket.on('tarea-por-expirar', (data) => {
-        console.log(`⚠️ [Socket] Tarea por expirar: ${data.titulo}`);
+        console.log('========================================');
+        console.log(`⚠️ [Socket] TAREA POR EXPIRAR: ${data.titulo}`);
         console.log(`   📅 Días restantes: ${data.diasRestantes}`);
-        tarjetasStore.fetchTarjetas();
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-por-expirar');
         
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('⚠️ Tarea por expirar', {
@@ -9053,9 +9299,13 @@ export default defineNuxtPlugin(() => {
       
       // Tarea auto-finalizada
       socket.on('tarea-auto-finalizada', (data) => {
-        console.log(`🤖 [Socket] Tarea auto-finalizada: ${data.titulo}`);
+        console.log('========================================');
+        console.log(`🤖 [Socket] TAREA AUTO-FINALIZADA: ${data.titulo}`);
         console.log(`   📝 Mensaje: ${data.mensaje}`);
-        tarjetasStore.fetchTarjetas();
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-auto-finalizada');
         
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('🤖 Tarea auto-finalizada', {
@@ -9067,38 +9317,83 @@ export default defineNuxtPlugin(() => {
       
       // Nueva tarea asignada
       socket.on('nueva-tarea-asignada', (data) => {
-        console.log(`📢 [Socket] Nueva tarea asignada: ${data.tarea?.titulo}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`📢 [Socket] NUEVA TAREA ASIGNADA: ${data.tarea?.titulo}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('nueva-tarea-asignada');
       });
       
       // Progreso actualizado
       socket.on('progreso-actualizado', (data) => {
-        console.log(`📈 [Socket] Progreso actualizado`);
-        tarjetasStore.fetchTarjetas();
-      });
-      
-      // Tarea iniciada (evento antiguo)
-      socket.on('tarea-iniciada', () => {
-        console.log(`🚀 [Socket] Tarea iniciada (evento antiguo)`);
-        tarjetasStore.fetchTarjetas();
-      });
-      
-      // Tarea pausada (evento antiguo)
-      socket.on('tarea-pausada', () => {
-        console.log(`⏸️ [Socket] Tarea pausada (evento antiguo)`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`📈 [Socket] PROGRESO ACTUALIZADO`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('progreso-actualizado');
       });
       
       // Tiempo estimado establecido
       socket.on('tiempo-estimado-establecido', (data) => {
-        console.log(`⏱️ [Socket] Tiempo estimado establecido: ${data.tareaId}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`⏱️ [Socket] TIEMPO ESTIMADO ESTABLECIDO: ${data.tareaId}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tiempo-estimado-establecido');
+      });
+      
+      // Tarea reasignada
+      socket.on('tarea-reasignada', (data) => {
+        console.log('========================================');
+        console.log(`🔄 [Socket] TAREA REASIGNADA: ${data.titulo}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-reasignada');
+      });
+      
+      // 🔥 NUEVO: Tarea finalizada por ti mismo (técnico que finalizó)
+      socket.on('tarea-finalizada-por-ti', (data) => {
+        console.log('========================================');
+        console.log(`✅ [Socket] TAREA FINALIZADA POR TI: ${data.titulo}`);
+        console.log(`   📝 Mensaje: ${data.mensaje}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('tarea-finalizada-por-ti');
+      });
+      
+      // 🔥 NUEVO: Alerta de progreso crítico
+      socket.on('alerta-progreso-critico', (data) => {
+        console.log('========================================');
+        console.log(`⚠️ [Socket] ALERTA CRÍTICA: ${data.titulo}`);
+        console.log(`   👤 Técnico: ${data.tecnico}`);
+        console.log(`   📊 Progreso: ${data.progreso}%`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('alerta-progreso-critico');
+        
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('⚠️ Alerta de progreso crítico', {
+            body: data.mensaje,
+            icon: '/favicon.ico'
+          });
+        }
       });
       
       // Rol actualizado
       socket.on('rol-actualizado', (data) => {
-        console.log(`🔄 [Socket] Rol actualizado: ${data.nuevoRol} para usuario ${data.userId}`);
-        tarjetasStore.fetchTarjetas();
+        console.log('========================================');
+        console.log(`🔄 [Socket] ROL ACTUALIZADO: ${data.nuevoRol}`);
+        console.log(`   👤 Usuario: ${data.userId}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log('========================================');
+        
+        actualizarAmbosStores('rol-actualizado');
         
         if (data.userId === authStore.user?._id) {
           console.log(`👤 [Socket] Tu rol ha sido actualizado a: ${data.nuevoRol}`);
@@ -9653,6 +9948,242 @@ export const useAuthStore = defineStore('auth', {
         }
       }
       return false;
+    }
+  }
+}); 
+================================= 
+stores\empleados.js 
+================================= 
+ 
+// stores/empleados.js
+import { defineStore } from 'pinia';
+
+export const useEmpleadosStore = defineStore('empleados', {
+  state: () => ({
+    estadosTecnicos: [],
+    cargando: false,
+    ultimaActualizacion: null,
+    listenersRegistrados: false,
+    eventosRecibidos: 0,
+    ultimoEvento: null,
+    socketId: null,
+    _intervaloPolling: null
+  }),
+  
+  getters: {
+    tecnicosOcupados: (state) => {
+      return state.estadosTecnicos.filter(t => t.tarea !== null);
+    },
+    tecnicosDisponibles: (state) => {
+      return state.estadosTecnicos.filter(t => t.tarea === null);
+    },
+    totalTecnicos: (state) => state.estadosTecnicos.length
+  },
+  
+  actions: {
+    // ============================================================
+    // Cargar el estado de los técnicos desde el backend
+    // ============================================================
+    async cargarEstadoTecnicos(motivo = 'manual') {
+      try {
+        const config = useRuntimeConfig();
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.warn('⚠️ [EmpleadosStore] No hay token, abortando');
+          return;
+        }
+        
+        const url = `${config.public.apiBase}/tarjetas/estado-empleados`;
+        console.log(`👥 [EmpleadosStore] 📤 Cargando estado (motivo: ${motivo})...`);
+        
+        this.cargando = true;
+        const response = await $fetch(url, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        this.estadosTecnicos = response;
+        this.ultimaActualizacion = new Date();
+        console.log(`✅ [EmpleadosStore] ${response.length} técnicos cargados (motivo: ${motivo})`);
+        console.log(`   📊 Ocupados: ${response.filter(t => t.tarea).length} | Disponibles: ${response.filter(t => !t.tarea).length}`);
+      } catch (error) {
+        console.error('❌ [EmpleadosStore] Error cargando estado:', error);
+      } finally {
+        this.cargando = false;
+      }
+    },
+    
+    // ============================================================
+    // Registrar listeners de Socket.IO (SOLO UNA VEZ)
+    // ============================================================
+    registrarListenersSocket() {
+      console.log('========================================');
+      console.log('🔌 [EmpleadosStore] registrarListenersSocket() llamado');
+      console.log(`   📊 listenersRegistrados: ${this.listenersRegistrados}`);
+      console.log(`   📊 isClient: ${process.client}`);
+      
+      if (!process.client) {
+        console.log('ℹ️ [EmpleadosStore] No es cliente, omitiendo');
+        console.log('========================================');
+        return;
+      }
+      
+      const nuxtApp = useNuxtApp();
+      const socket = nuxtApp.$socket;
+      
+      console.log(`   📊 socket disponible: ${!!socket}`);
+      console.log(`   📊 socket.connected: ${socket?.connected}`);
+      console.log(`   📊 socket.id: ${socket?.id}`);
+      
+      if (!socket) {
+        console.warn('⚠️ [EmpleadosStore] ❌ Socket NO disponible, activando polling de respaldo');
+        this._iniciarPollingRespaldo();
+        console.log('========================================');
+        return;
+      }
+      
+      // 🔥 Si el socket cambió (reconexión), limpiar los listeners viejos
+      // antes de registrar los nuevos
+      if (this.listenersRegistrados && this.socketId && this.socketId !== socket.id) {
+        console.log(`🔄 [EmpleadosStore] Socket cambió (${this.socketId} → ${socket.id}), re-registrando listeners`);
+        this.limpiarListenersSocket();
+      }
+      
+      if (this.listenersRegistrados) {
+        console.log('ℹ️ [EmpleadosStore] Ya registrados en este socket, omitiendo');
+        console.log('========================================');
+        return;
+      }
+      
+      this.socketId = socket.id;
+      
+      // Lista de eventos que afectan el estado de los técnicos
+      const eventos = [
+        'nueva-tarea-disponible',
+        'tarea-tomada',
+        'tarea-asignada',
+        'nueva-tarea-asignada',
+        'tarea-iniciada-tiempo-real',
+        'tarea-pausada-tiempo-real',
+        'tarea-reanudada-tiempo-real',
+        'tarea-lista-para-revision',
+        'tarea-auto-finalizada',
+        'tarea-completada-automaticamente',
+        'tarea-aprobada-por-supervisor',
+        'tarea-aprobada-enviada-cliente',
+        'tarea-enviada-a-cliente',
+        'tarea-finalizada-sin-cliente',
+        'tarea-calificada',
+        'tarea-reasignada',
+        'estado-actualizado',
+        'estado-general-actualizado',
+        'tarea-finalizada-por-ti',
+        'tiempo-estimado-establecido',
+        'progreso-actualizado',
+        'tarea-por-expirar'
+      ];
+      
+      // Debounce con logs
+      let timeoutDebounce = null;
+      const recargarConDebounce = (evento, data) => {
+        this.eventosRecibidos++;
+        this.ultimoEvento = { evento, timestamp: new Date(), data };
+        
+        console.log('========================================');
+        console.log(`📢 [EmpleadosStore] ✅ EVENTO RECIBIDO: "${evento}"`);
+        console.log(`   📊 Total eventos: ${this.eventosRecibidos}`);
+        console.log(`   ⏰ ${new Date().toLocaleTimeString()}`);
+        console.log(`   ⏱️ Programando recarga en 300ms...`);
+        
+        if (timeoutDebounce) {
+          console.log('   ⏱️ Debounce cancelado (nuevo evento entrante)');
+          clearTimeout(timeoutDebounce);
+        }
+        
+        timeoutDebounce = setTimeout(() => {
+          console.log(`🔄 [EmpleadosStore] Ejecutando recarga por evento "${evento}"`);
+          this.cargarEstadoTecnicos(`socket:${evento}`);
+        }, 300);
+      };
+      
+      eventos.forEach(evento => {
+        socket.on(evento, (data) => recargarConDebounce(evento, data));
+      });
+      
+      this.listenersRegistrados = true;
+      console.log(`✅ [EmpleadosStore] ${eventos.length} listeners registrados en socket ${socket.id}`);
+      console.log('========================================');
+      
+      // Activar polling de respaldo (solo si no hay socket o por si acaso)
+      this._iniciarPollingRespaldo();
+    },
+    
+    // ============================================================
+    // 🔥 NUEVO: Polling de respaldo cada 30s (por si un evento se pierde)
+    // ============================================================
+    _iniciarPollingRespaldo() {
+      if (!process.client) return;
+      if (this._intervaloPolling) {
+        return; // ya está activo
+      }
+      
+      console.log('⏱️ [EmpleadosStore] Activando polling de respaldo cada 30s');
+      
+      this._intervaloPolling = setInterval(() => {
+        console.log('🔄 [EmpleadosStore] Polling de respaldo (30s)');
+        this.cargarEstadoTecnicos('polling-respaldo');
+      }, 30000);
+    },
+    
+    // ============================================================
+    // Detener polling
+    // ============================================================
+    detenerPolling() {
+      if (this._intervaloPolling) {
+        clearInterval(this._intervaloPolling);
+        this._intervaloPolling = null;
+        console.log('🛑 [EmpleadosStore] Polling de respaldo detenido');
+      }
+    },
+    
+    // ============================================================
+    // Limpiar listeners
+    // ============================================================
+    limpiarListenersSocket() {
+      if (!process.client || !this.listenersRegistrados) return;
+      
+      const nuxtApp = useNuxtApp();
+      const socket = nuxtApp.$socket;
+      if (!socket) return;
+      
+      const eventos = [
+        'nueva-tarea-disponible',
+        'tarea-tomada',
+        'tarea-asignada',
+        'nueva-tarea-asignada',
+        'tarea-iniciada-tiempo-real',
+        'tarea-pausada-tiempo-real',
+        'tarea-reanudada-tiempo-real',
+        'tarea-lista-para-revision',
+        'tarea-auto-finalizada',
+        'tarea-completada-automaticamente',
+        'tarea-aprobada-por-supervisor',
+        'tarea-aprobada-enviada-cliente',
+        'tarea-enviada-a-cliente',
+        'tarea-finalizada-sin-cliente',
+        'tarea-calificada',
+        'tarea-reasignada',
+        'estado-actualizado',
+        'estado-general-actualizado',
+        'tarea-finalizada-por-ti',
+        'tiempo-estimado-establecido',
+        'progreso-actualizado',
+        'tarea-por-expirar'
+      ];
+      
+      eventos.forEach(evento => socket.off(evento));
+      this.listenersRegistrados = false;
+      this.socketId = null;
+      console.log('🧹 [EmpleadosStore] Listeners removidos');
     }
   }
 }); 

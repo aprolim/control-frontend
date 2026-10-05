@@ -53,41 +53,19 @@
           ></textarea>
         </div>
         
-        <div v-if="extra">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tiempo estimado (para tu planificación)</label>
-          <div class="flex gap-2">
-            <div class="flex-1">
-              <input
-                v-model.number="form.horasEstimadas"
-                type="number"
-                step="0.5"
-                min="0"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Horas"
-              />
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Horas</p>
-            </div>
-            <div class="flex-1">
-              <input
-                v-model.number="form.minutosEstimados"
-                type="number"
-                step="5"
-                min="0"
-                max="55"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Minutos"
-              />
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Minutos</p>
-            </div>
-          </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            📊 Tiempo total estimado: {{ tiempoEstimadoFormateado }}
+        <!-- 🔥 ELIMINADO: El campo "Tiempo estimado (para tu planificación)" 
+             ya no se muestra porque no aporta valor: el técnico igual deberá
+             establecer el tiempo estimado real cuando inicie la tarea. -->
+        
+        <div v-if="!extra" class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            ⏱️ El tiempo de la tarea será estimado por el técnico asignado.
           </p>
         </div>
         
-        <div v-else class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            ⏱️ El tiempo de la tarea será estimado por el técnico asignado.
+        <div v-if="extra" class="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+          <p class="text-sm text-green-700 dark:text-green-300">
+            ✅ La tarea se creará asignada a ti. Cuando decidas trabajar en ella, podrás establecer el tiempo estimado antes de iniciarla.
           </p>
         </div>
         
@@ -116,12 +94,6 @@
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
           />
           <p class="text-xs text-gray-500 dark:text-gray-400">✨ Regístrate después para ver el estado de tu solicitud</p>
-        </div>
-        
-        <div v-if="extra" class="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
-          <p class="text-sm text-green-700 dark:text-green-300">
-            ✅ La tarea se creará automáticamente asignada a ti y pasará a "En Progreso".
-          </p>
         </div>
         
         <button
@@ -160,27 +132,10 @@ const solicitudSeleccionada = ref(null);
 const form = ref({
   titulo: '',
   descripcion: '',
-  horasEstimadas: 0,
-  minutosEstimados: 0,
   logueado: false,
   nombre: '',
   email: '',
   telefono: ''
-});
-
-const tiempoTotalMinutos = computed(() => {
-  return ((form.value.horasEstimadas || 0) * 60) + (form.value.minutosEstimados || 0);
-});
-
-const tiempoEstimadoFormateado = computed(() => {
-  const totalMinutos = tiempoTotalMinutos.value;
-  const horas = Math.floor(totalMinutos / 60);
-  const minutos = totalMinutos % 60;
-  
-  if (totalMinutos === 0) return 'Sin especificar';
-  if (horas === 0) return `${minutos} minutos`;
-  if (minutos === 0) return `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
-  return `${horas} ${horas === 1 ? 'hora' : 'horas'} y ${minutos} minutos`;
 });
 
 const prioridadBadgeClass = (prioridad) => {
@@ -242,13 +197,13 @@ const handleSubmit = async () => {
     const nombreCompleto = authStore.user?.nombre || form.value.nombre || 'Anónimo';
     
     if (props.extra) {
+      // 🔥 Ya no se envían horasEstimadas ni minutosEstimados
+      // El técnico los establecerá cuando decida iniciar la tarea
       await tarjetasStore.crearTareaExtra({
         titulo: form.value.titulo,
-        descripcion: form.value.descripcion,
-        horasEstimadas: form.value.horasEstimadas,
-        minutosEstimados: form.value.minutosEstimados
+        descripcion: form.value.descripcion
       });
-      alert('✅ Tarea extra creada exitosamente.');
+      alert('✅ Tarea extra creada exitosamente. Podrás establecer el tiempo estimado cuando la inicies.');
     } else {
       await tarjetasStore.crearSolicitud({
         titulo: form.value.titulo,
@@ -271,8 +226,6 @@ const handleSubmit = async () => {
     form.value = {
       titulo: '',
       descripcion: '',
-      horasEstimadas: 0,
-      minutosEstimados: 0,
       logueado: false,
       nombre: '',
       email: '',
