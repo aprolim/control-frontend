@@ -1,7 +1,11 @@
 <template>
   <div
     class="tarjeta-profesional bg-white rounded-lg p-4 shadow-sm border border-gray-200 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-gray-300"
-    :class="{ 'border-l-4': true, 'border-l-green-500': tarjeta.estadoProgreso === 'activa', 'border-l-yellow-500': tarjeta.estadoProgreso === 'pausada' }"
+    :class="{ 
+      'border-l-4': true, 
+      'border-l-green-500': tarjeta.estadoProgreso === 'activa', 
+      'border-l-yellow-500': tarjeta.estadoProgreso === 'pausada' 
+    }"
     @click="$emit('click')"
   >
     <!-- Header -->
@@ -28,7 +32,7 @@
       </div>
       <div class="w-full bg-gray-100 rounded-full h-1.5">
         <div
-          class="rounded-full h-1.5 transition-all duration-500"
+          class="rounded-full h-1.5 transition-all duration-1000 ease-linear"
           :class="progresoBarraColor"
           :style="{ width: `${progresoMostrado}%` }"
         ></div>
@@ -63,7 +67,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
   tarjeta: {
@@ -73,6 +77,72 @@ const props = defineProps({
 });
 
 defineEmits(['click']);
+
+// 🔥 Ref reactivo para recálculo en vivo cada segundo
+const ahora = ref(Date.now());
+let intervaloTick = null;
+
+onMounted(() => {
+  intervaloTick = setInterval(() => {
+    ahora.value = Date.now();
+  }, 1000);
+});
+
+onUnmounted(() => {
+  if (intervaloTick) {
+    clearInterval(intervaloTick);
+    intervaloTick = null;
+  }
+});
+
+// ============================================================
+// 🔥 CÁLCULO DE PROGRESO EN VIVO (CORREGIDO)
+// Funciona tanto para tareas activas como pausadas
+// ============================================================
+
+const calcularProgreso = () => {
+  if (!props.tarjeta) return 0;
+  
+  // Si no hay tiempo estimado, usar el porcentaje guardado
+  if (!props.tarjeta.tiempoEstimadoEmpleado || props.tarjeta.tiempoEstimadoEmpleado <= 0) {
+    return props.tarjeta.porcentajeCompletado || 0;
+  }
+  
+  const tiempoEstimado = props.tarjeta.tiempoEstimadoEmpleado;
+  let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
+  
+  // 🔥 Si está ACTIVA, sumar el tiempo desde la última reanudación
+  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+    const inicio = new Date(props.tarjeta.fechaUltimaReanudacion).getTime();
+    const minutosDesdeReanudacion = Math.floor((ahora.value - inicio) / 1000 / 60);
+    tiempoTotal += minutosDesdeReanudacion;
+  }
+  
+  // 🔥 Calcular SIEMPRE basado en tiempo (funciona para activa y pausada)
+  let progreso = Math.min(100, Math.floor((tiempoTotal / tiempoEstimado) * 100));
+  progreso = Math.max(progreso, props.tarjeta.porcentajeCompletado || 0);
+  
+  return Math.min(100, progreso);
+};
+
+const calcularTiempoRestante = () => {
+  if (!props.tarjeta) return 0;
+  if (!props.tarjeta.tiempoEstimadoEmpleado || props.tarjeta.tiempoEstimadoEmpleado <= 0) return 0;
+  
+  let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
+  
+  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+    const inicio = new Date(props.tarjeta.fechaUltimaReanudacion).getTime();
+    const minutosDesdeReanudacion = Math.floor((ahora.value - inicio) / 1000 / 60);
+    tiempoTotal += minutosDesdeReanudacion;
+  }
+  
+  return Math.max(0, props.tarjeta.tiempoEstimadoEmpleado - tiempoTotal);
+};
+
+// ============================================================
+// COMPUTED
+// ============================================================
 
 const prioridadMap = {
   baja: { texto: 'Baja', class: 'bg-gray-100 text-gray-600' },
@@ -84,15 +154,21 @@ const prioridadMap = {
 const prioridadTexto = computed(() => prioridadMap[props.tarjeta.prioridad]?.texto || 'Media');
 const prioridadClass = computed(() => prioridadMap[props.tarjeta.prioridad]?.class || prioridadMap.media.class);
 
+const progresoMostrado = computed(() => calcularProgreso());
+
 const progresoColor = computed(() => {
-  if (props.tarjeta.porcentajeCompletado >= 80) return 'text-green-600';
-  if (props.tarjeta.porcentajeCompletado >= 50) return 'text-blue-600';
+  const p = progresoMostrado.value;
+  if (p >= 80) return 'text-emerald-600';
+  if (p >= 50) return 'text-blue-600';
   return 'text-gray-600';
 });
 
 const progresoBarraColor = computed(() => {
-  if (props.tarjeta.porcentajeCompletado >= 80) return 'bg-green-500';
-  if (props.tarjeta.porcentajeCompletado >= 50) return 'bg-blue-500';
+  if (props.tarjeta.estadoProgreso === 'activa') return 'bg-emerald-500';
+  if (props.tarjeta.estadoProgreso === 'pausada') return 'bg-amber-500';
+  const p = progresoMostrado.value;
+  if (p >= 80) return 'bg-emerald-500';
+  if (p >= 50) return 'bg-blue-500';
   return 'bg-gray-500';
 });
 
@@ -106,32 +182,18 @@ const inicialesAsignado = computed(() => {
 });
 
 const tiempoMostrado = computed(() => {
-  let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
+  const restante = calcularTiempoRestante();
   
-  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
-    tiempoTotal += Math.floor((new Date() - new Date(props.tarjeta.fechaUltimaReanudacion)) / 1000 / 60);
+  if (props.tarjeta.estadoProgreso === 'pausada') {
+    return '⏸️ Pausada';
   }
   
-  const minutosRestantes = (props.tarjeta.tiempoEstimadoEmpleado || 0) - tiempoTotal;
+  if (restante <= 0) return '✅ Listo';
   
-  if (minutosRestantes <= 0) return '✅ Listo';
-  const horas = Math.floor(minutosRestantes / 60);
-  const mins = minutosRestantes % 60;
+  const horas = Math.floor(restante / 60);
+  const mins = restante % 60;
   if (horas === 0) return `${mins}min`;
   return `${horas}h ${mins}min`;
-});
-
-const progresoMostrado = computed(() => {
-  const tiempoEstimado = props.tarjeta.tiempoEstimadoEmpleado || 0;
-  if (tiempoEstimado > 0) {
-    let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
-    if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
-      tiempoTotal += Math.floor((new Date() - new Date(props.tarjeta.fechaUltimaReanudacion)) / 1000 / 60);
-    }
-    const progreso = Math.min(100, Math.floor((tiempoTotal / tiempoEstimado) * 100));
-    return Math.max(props.tarjeta.porcentajeCompletado || 0, progreso);
-  }
-  return props.tarjeta.porcentajeCompletado || 0;
 });
 </script>
 

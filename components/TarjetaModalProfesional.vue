@@ -57,10 +57,10 @@
         <div class="space-y-3">
           <div class="flex justify-between items-center">
             <h4 class="font-semibold text-gray-700 dark:text-gray-300">📊 Progreso</h4>
-            <span class="text-2xl font-bold" :class="progresoColor">{{ tarjeta.porcentajeCompletado }}%</span>
+            <span class="text-2xl font-bold" :class="progresoColor">{{ progresoMostrado }}%</span>
           </div>
           <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-            <div class="rounded-full h-3 transition-all duration-500" :class="progresoBarraColor" :style="{ width: `${tarjeta.porcentajeCompletado}%` }"></div>
+            <div class="rounded-full h-3 transition-all duration-1000 ease-linear" :class="progresoBarraColor" :style="{ width: `${progresoMostrado}%` }"></div>
           </div>
         </div>
         
@@ -274,9 +274,7 @@
           </div>
         </div>
         
-        <!-- ============================================================
-             CALIFICACIÓN (solo lectura si ya está calificada)
-             ============================================================ -->
+        <!-- CALIFICACIÓN -->
         <div v-if="tarjeta.calificacion?.puntaje" 
              class="bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
           <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm flex items-center gap-2">
@@ -294,9 +292,7 @@
           </p>
         </div>
         
-        <!-- ============================================================
-             BOTONES DE ACCIÓN
-             ============================================================ -->
+        <!-- BOTONES DE ACCIÓN -->
         <div class="flex flex-wrap gap-3 pt-3">
           <button 
             v-if="puedeAutoAsignar" 
@@ -391,7 +387,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useTarjetasStore } from '~/stores/tarjetas';
 import RegistrarProgresoModal from './RegistrarProgresoModal.vue';
@@ -418,9 +414,27 @@ const actualizandoTiempo = ref(false);
 const tiempoEstimadoHoras = ref(0);
 const tiempoEstimadoMinutos = ref(0);
 
+// 🔥 Ref reactivo para recálculo en vivo cada segundo
+const ahora = ref(Date.now());
+let intervaloTick = null;
+
+onMounted(() => {
+  intervaloTick = setInterval(() => {
+    ahora.value = Date.now();
+  }, 1000);
+});
+
+onUnmounted(() => {
+  if (intervaloTick) {
+    clearInterval(intervaloTick);
+    intervaloTick = null;
+  }
+});
+
 // ============================================================
 // FUNCIONES DE UTILIDAD
 // ============================================================
+
 const formatDate = (date) => {
   if (!date) return 'Fecha no disponible';
   return new Date(date).toLocaleString('es-ES');
@@ -444,6 +458,7 @@ const formatTiempo = (minutos) => {
 // ============================================================
 // HELPERS PARA EL HISTORIAL
 // ============================================================
+
 const getTipoIcono = (tipo) => {
   const map = {
     'sugerido_supervisor': '📌',
@@ -525,8 +540,63 @@ const getRolLabel = (rol) => {
 };
 
 // ============================================================
+// 🔥 CÁLCULO DE PROGRESO EN VIVO (CORREGIDO)
+// Funciona tanto para tareas activas como pausadas
+// ============================================================
+
+const calcularProgreso = () => {
+  if (!props.tarjeta) return 0;
+  
+  if (!props.tarjeta.tiempoEstimadoEmpleado || props.tarjeta.tiempoEstimadoEmpleado <= 0) {
+    return props.tarjeta.porcentajeCompletado || 0;
+  }
+  
+  const tiempoEstimado = props.tarjeta.tiempoEstimadoEmpleado;
+  let tiempoTotal = props.tarjeta.tiempoAcumulado || 0;
+  
+  // 🔥 Si está ACTIVA, sumar el tiempo desde la última reanudación
+  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+    const inicio = new Date(props.tarjeta.fechaUltimaReanudacion).getTime();
+    const minutosDesdeReanudacion = Math.floor((ahora.value - inicio) / 1000 / 60);
+    tiempoTotal += minutosDesdeReanudacion;
+  }
+  
+  // 🔥 Calcular SIEMPRE basado en tiempo (funciona para activa y pausada)
+  let progreso = Math.min(100, Math.floor((tiempoTotal / tiempoEstimado) * 100));
+  progreso = Math.max(progreso, props.tarjeta.porcentajeCompletado || 0);
+  
+  return Math.min(100, progreso);
+};
+
+const calcularTiempoTrabajado = () => {
+  if (!props.tarjeta) return 0;
+  
+  const horasReales = props.tarjeta.horasTotalesReales || 0;
+  const minutosReales = props.tarjeta.minutosTotalesReales || 0;
+  
+  // Si la tarea está finalizada, usar los totales guardados
+  if (props.tarjeta.estado === 'finalizada') {
+    if (horasReales > 0 || minutosReales > 0) {
+      return (horasReales * 60) + minutosReales;
+    }
+  }
+  
+  // Calcular en vivo
+  let tiempo = props.tarjeta.tiempoAcumulado || 0;
+  
+  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
+    const inicio = new Date(props.tarjeta.fechaUltimaReanudacion).getTime();
+    const minutosDesdeReanudacion = Math.floor((ahora.value - inicio) / 1000 / 60);
+    tiempo += minutosDesdeReanudacion;
+  }
+  
+  return tiempo;
+};
+
+// ============================================================
 // COMPUTED - PERMISOS
 // ============================================================
+
 const esAsignadoAMi = computed(() => {
   return props.tarjeta.asignadoA?._id === authStore.user?._id;
 });
@@ -585,26 +655,10 @@ const puedePausar = computed(() => {
 // ============================================================
 // COMPUTED - TIEMPO
 // ============================================================
+
 const tiempoEstimadoActual = computed(() => {
   return props.tarjeta.tiempoEstimadoEmpleado || 0;
 });
-
-const calcularTiempoTrabajado = () => {
-  const horasReales = props.tarjeta.horasTotalesReales || 0;
-  const minutosReales = props.tarjeta.minutosTotalesReales || 0;
-  
-  if (horasReales > 0 || minutosReales > 0) {
-    return (horasReales * 60) + minutosReales;
-  }
-  
-  let tiempo = props.tarjeta.tiempoAcumulado || 0;
-  if (props.tarjeta.estadoProgreso === 'activa' && props.tarjeta.fechaUltimaReanudacion) {
-    const ahora = new Date();
-    const inicio = new Date(props.tarjeta.fechaUltimaReanudacion);
-    tiempo += Math.floor((ahora - inicio) / 1000 / 60);
-  }
-  return tiempo;
-};
 
 const tiempoRealTrabajado = computed(() => calcularTiempoTrabajado());
 
@@ -620,9 +674,12 @@ const tiempoTotalMinutos = computed(() => {
 
 const tiempoValido = computed(() => tiempoTotalMinutos.value > 0);
 
+const progresoMostrado = computed(() => calcularProgreso());
+
 // ============================================================
 // COMPUTED - ESTILOS
 // ============================================================
+
 const prioridadMap = {
   baja: { texto: 'Baja', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
   media: { texto: 'Media', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
@@ -650,14 +707,18 @@ const progresoColor = computed(() => {
 });
 
 const progresoBarraColor = computed(() => {
-  if (props.tarjeta.porcentajeCompletado >= 80) return 'bg-green-500';
-  if (props.tarjeta.porcentajeCompletado >= 50) return 'bg-blue-500';
+  if (props.tarjeta.estadoProgreso === 'activa') return 'bg-emerald-500';
+  if (props.tarjeta.estadoProgreso === 'pausada') return 'bg-amber-500';
+  const p = progresoMostrado.value;
+  if (p >= 80) return 'bg-green-500';
+  if (p >= 50) return 'bg-blue-500';
   return 'bg-gray-500';
 });
 
 // ============================================================
 // ACCIONES
 // ============================================================
+
 const guardarTiempoEstimado = async () => {
   if (!tiempoValido.value) {
     alert('⚠️ Debes establecer un tiempo mayor a 0');
@@ -821,6 +882,7 @@ const handleReasignado = () => {
 // ============================================================
 // LIFECYCLE
 // ============================================================
+
 const cargarTiempo = () => {
   if (props.tarjeta.tiempoEstimadoEmpleado > 0) {
     const horas = Math.floor(props.tarjeta.tiempoEstimadoEmpleado / 60);

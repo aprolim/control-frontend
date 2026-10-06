@@ -6,20 +6,17 @@
     <nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40 transition-colors duration-300">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
-          <!-- Logo -->
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-sm">
               <span class="text-white text-sm font-bold">CP</span>
             </div>
             <div>
-              <h1 class="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Control de Personal</h1>
+              <h1 class="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Control de Actividades</h1>
               <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Panel de Técnico</p>
             </div>
           </div>
           
-          <!-- Acciones derecha -->
           <div class="flex items-center gap-2">
-            <!-- Campana de notificaciones -->
             <button
               v-if="!silencioActivo"
               @click="menuSilencioAbierto = !menuSilencioAbierto"
@@ -46,14 +43,11 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
               </svg>
-              <span class="text-xs font-semibold">
-                {{ tiempoRestanteSilencio?.minutos }}m
-              </span>
+              <span class="text-xs font-semibold">{{ tiempoRestanteSilencio?.minutos }}m</span>
             </button>
             
             <ThemeToggle />
             
-            <!-- Perfil -->
             <div class="flex items-center gap-2 pl-3 ml-1 border-l border-gray-200 dark:border-gray-800">
               <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
                 <span class="text-xs font-semibold text-white">{{ authStore.user?.nombre?.charAt(0) || '?' }}</span>
@@ -79,15 +73,9 @@
     </nav>
     
     <!-- Menú de silencio (popover) -->
-    <div
-      v-if="menuSilencioAbierto"
-      class="fixed inset-0 z-50"
-      @click="menuSilencioAbierto = false"
-    >
+    <div v-if="menuSilencioAbierto" class="fixed inset-0 z-50" @click="menuSilencioAbierto = false">
       <div class="absolute top-16 right-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-2 w-56">
-        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 py-2">
-          Silenciar notificaciones
-        </p>
+        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 py-2">Silenciar notificaciones</p>
         <button
           v-for="opcion in opcionesSilencio"
           :key="opcion.minutos"
@@ -147,7 +135,6 @@
           ? 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900/30' 
           : 'border-gray-200 dark:border-gray-800'"
       >
-        <!-- Header -->
         <header class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
@@ -158,10 +145,7 @@
             <div>
               <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 Tareas disponibles
-                <span
-                  v-if="tareasDisponibles.length > 0"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-semibold"
-                >
+                <span v-if="tareasDisponibles.length > 0" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-semibold">
                   <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
                   {{ tareasDisponibles.length }}
                 </span>
@@ -185,9 +169,7 @@
           </button>
         </header>
         
-        <!-- Contenido -->
         <div class="p-5">
-          <!-- Cargando -->
           <div v-if="cargandoDisponibles" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <div v-for="i in 3" :key="i" class="animate-pulse border border-gray-200 dark:border-gray-800 rounded-lg p-4">
               <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
@@ -196,7 +178,6 @@
             </div>
           </div>
           
-          <!-- Vacío -->
           <div v-else-if="tareasDisponibles.length === 0" class="text-center py-10">
             <div class="w-14 h-14 mx-auto rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
               <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +188,6 @@
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Vuelve a intentar más tarde</p>
           </div>
           
-          <!-- Grid de tareas -->
           <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <article 
               v-for="tarea in tareasDisponibles" 
@@ -216,17 +196,13 @@
               class="group border border-gray-200 dark:border-gray-800 rounded-lg p-4 hover:border-green-400 dark:hover:border-green-600 hover:shadow-md cursor-pointer transition-all duration-200 flex flex-col"
             >
               <div class="flex items-start justify-between gap-2 mb-2">
-                <h3 class="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2 flex-1">
-                  {{ tarea.titulo }}
-                </h3>
+                <h3 class="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2 flex-1">{{ tarea.titulo }}</h3>
                 <span :class="prioridadColorClass(tarea.prioridad)" class="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide">
                   {{ prioridadTextoLabel(tarea.prioridad) }}
                 </span>
               </div>
               
-              <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-3 flex-1">
-                {{ tarea.descripcion || 'Sin descripción' }}
-              </p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-3 flex-1">{{ tarea.descripcion || 'Sin descripción' }}</p>
               
               <div class="space-y-1 text-[11px] text-gray-500 dark:text-gray-400 mb-3">
                 <div v-if="tarea.clienteInfo" class="flex items-center gap-1.5">
@@ -276,7 +252,6 @@
         </header>
         
         <div class="p-5">
-          <!-- Vacío -->
           <div v-if="tareasEnProgreso.length === 0 && !tareaActiva" class="text-center py-10">
             <div class="w-14 h-14 mx-auto rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
               <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,7 +264,7 @@
           
           <div v-else class="space-y-4">
             <!-- ============================================================ -->
-            <!-- TAREA ACTIVA (compacta)                                       -->
+            <!-- TAREA ACTIVA (compacta con descripción del usuario)           -->
             <!-- ============================================================ -->
             <article v-if="tareaActiva" class="relative bg-white dark:bg-gray-900 border-2 border-emerald-500 rounded-xl overflow-hidden shadow-lg ring-4 ring-emerald-100 dark:ring-emerald-900/20">
               
@@ -329,26 +304,41 @@
                   </span>
                 </div>
                 
-                <!-- Fila 2: Cliente (si aplica) -->
+                <!-- 🔥 NUEVO: Descripción del usuario -->
+                <div v-if="tareaActiva.descripcion" class="bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2 border-l-2 border-blue-400 dark:border-blue-600">
+                  <p class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-0.5">
+                    📝 Descripción del usuario
+                  </p>
+                  <p class="text-sm text-gray-700 dark:text-gray-300 leading-snug">
+                    {{ tareaActiva.descripcion }}
+                  </p>
+                </div>
+                
+                <!-- 🔥 NUEVO: Info ampliada del cliente -->
                 <div v-if="tareaActiva.tipo === 'solicitud_cliente' && tareaActiva.clienteInfo" 
-                    class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                     class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                   <div class="flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    <span class="font-medium text-gray-700 dark:text-gray-300">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
+                    <span class="font-semibold text-gray-900 dark:text-white">{{ tareaActiva.clienteInfo.nombre || 'Anónimo' }}</span>
                   </div>
                   <div v-if="tareaActiva.clienteInfo.telefono" class="flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
-                    <span>{{ tareaActiva.clienteInfo.telefono }}</span>
+                    <span class="text-gray-700 dark:text-gray-300">{{ tareaActiva.clienteInfo.telefono }}</span>
+                  </div>
+                  <div v-if="tareaActiva.clienteInfo.email" class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span class="text-gray-700 dark:text-gray-300 truncate max-w-[200px]">{{ tareaActiva.clienteInfo.email }}</span>
                   </div>
                 </div>
                 
                 <!-- Fila 3: Tiempos en grid horizontal compacto -->
                 <div class="grid grid-cols-3 gap-2">
-                  <!-- Trabajado -->
                   <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2">
                     <p class="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-0.5">Trabajado</p>
                     <div class="flex items-center gap-1.5">
@@ -359,7 +349,6 @@
                     </div>
                   </div>
                   
-                  <!-- Estimado -->
                   <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-2">
                     <p class="text-[9px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-0.5">Estimado</p>
                     <span class="text-lg font-bold text-blue-700 dark:text-blue-300 font-mono tabular-nums leading-none">
@@ -367,7 +356,6 @@
                     </span>
                   </div>
                   
-                  <!-- Restante -->
                   <div 
                     class="rounded-lg px-3 py-2"
                     :class="tiempoRestanteActivo > 0 
@@ -424,6 +412,7 @@
                 </div>
               </div>
             </article>
+            
             <!-- ============================================================ -->
             <!-- TAREAS PAUSADAS / POR INICIAR (en grid de 2 columnas)        -->
             <!-- ============================================================ -->
@@ -436,7 +425,6 @@
                 :key="tarea._id" 
                 class="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-white dark:bg-gray-900 flex flex-col"
               >
-                <!-- Header -->
                 <div class="p-4 border-b border-gray-100 dark:border-gray-800">
                   <div class="flex items-start justify-between gap-4 mb-2">
                     <div class="flex items-center gap-2 flex-1 min-w-0">
@@ -459,7 +447,6 @@
                   </p>
                 </div>
                 
-                <!-- Grid de tiempo y progreso -->
                 <div class="grid grid-cols-2 divide-x divide-gray-100 dark:divide-gray-800 border-b border-gray-100 dark:border-gray-800">
                   <div class="p-3 text-center">
                     <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">Trabajado</p>
@@ -476,21 +463,19 @@
                   </div>
                 </div>
                 
-                <!-- Progreso -->
                 <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
                   <div class="flex items-center justify-between mb-1.5">
                     <span class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Progreso</span>
-                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 tabular-nums">{{ tarea.porcentajeCompletado || 0 }}%</span>
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 tabular-nums">{{ calcularProgresoReal(tarea) }}%</span>
                   </div>
                   <div class="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
                     <div 
                       class="bg-blue-500 rounded-full h-1.5 transition-all duration-500" 
-                      :style="{ width: `${tarea.porcentajeCompletado || 0}%` }"
+                      :style="{ width: `${calcularProgresoReal(tarea)}%` }"
                     ></div>
                   </div>
                 </div>
                 
-                <!-- Acciones (flex-1 empuja al fondo) -->
                 <div class="p-4 flex gap-2 mt-auto">
                   <button 
                     v-if="tarea.tiempoEstimadoEmpleado === 0"
@@ -599,7 +584,6 @@
                   </p>
                 </div>
                 
-                <!-- Badge de calificación -->
                 <div class="flex-shrink-0">
                   <div v-if="tarea.calificacion?.puntaje" 
                        class="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
@@ -896,128 +880,61 @@ const configurarSockets = () => {
   console.log('✅ [Tecnico] Socket disponible');
   console.log('🔌 [Tecnico] Socket ID:', socket.value.id);
   
-  // 🔔 NUEVOS: Notificaciones sonoras
   socket.value.on('notificacion-nueva-pendiente', (data) => {
-    console.log('🔔 [Tecnico][SOCKET] Notificación nueva pendiente:', data.tarea?.titulo);
     notificarNuevaPendiente(data);
     recargarDatos();
   });
   
   socket.value.on('notificacion-tarea-asignada', (data) => {
-    console.log('🔔 [Tecnico][SOCKET] Notificación tarea asignada:', data.tarea?.titulo);
     notificarTareaAsignada(data);
     recargarDatos();
   });
   
-  // Eventos de recarga normales
-  socket.value.on('nueva-tarea-disponible', (data) => {
-    console.log('📢 [Tecnico][SOCKET] NUEVA TAREA DISPONIBLE:', data.tarea?.titulo);
-    recargarDatos();
-  });
-  
-  socket.value.on('tarea-tomada', (data) => {
-    console.log(`📢 [Tecnico][SOCKET] Tarea tomada por: ${data.empleado?.nombre}`);
-    recargarDatos();
-  });
-  
+  socket.value.on('nueva-tarea-disponible', () => recargarDatos());
+  socket.value.on('tarea-tomada', () => recargarDatos());
   socket.value.on('tarea-asignada', (data) => {
-    console.log(`📢 [Tecnico][SOCKET] Tarea asignada: ${data.tarea?.titulo}`);
-    if (data.tarea?.asignadoA?._id === authStore.user?._id) {
-      recargarDatos();
-    }
+    if (data.tarea?.asignadoA?._id === authStore.user?._id) recargarDatos();
   });
-  
-  socket.value.on('nueva-tarea-asignada', (data) => {
-    console.log(`📢 [Tecnico][SOCKET] Nueva tarea asignada: ${data.tarea?.titulo}`);
-    recargarDatos();
-  });
-  
+  socket.value.on('nueva-tarea-asignada', () => recargarDatos());
   socket.value.on('estado-actualizado', (data) => {
-    if (data.empleadoId === authStore.user?._id) {
-      recargarDatos();
-    }
+    if (data.empleadoId === authStore.user?._id) recargarDatos();
   });
-  
   socket.value.on('estado-general-actualizado', (data) => {
     const tarea = tarjetasStore.tarjetas.find(t => t._id === data.tareaId);
-    if (tarea && tarea.asignadoA?._id === authStore.user?._id) {
-      recargarDatos();
-    }
+    if (tarea && tarea.asignadoA?._id === authStore.user?._id) recargarDatos();
   });
-  
   socket.value.on('tarea-iniciada-tiempo-real', (data) => {
-    if (data.empleado?.id === authStore.user?._id) {
-      recargarDatos();
-    }
+    if (data.empleado?.id === authStore.user?._id) recargarDatos();
   });
-  
   socket.value.on('tarea-pausada-tiempo-real', (data) => {
-    if (data.empleadoId === authStore.user?._id) {
-      recargarDatos();
-    }
+    if (data.empleadoId === authStore.user?._id) recargarDatos();
   });
-  
   socket.value.on('tarea-reanudada-tiempo-real', (data) => {
-    if (data.empleadoId === authStore.user?._id) {
-      recargarDatos();
-    }
+    if (data.empleadoId === authStore.user?._id) recargarDatos();
   });
-  
-  socket.value.on('progreso-actualizado', () => {
-    recargarDatos();
-  });
-  
-  socket.value.on('tarea-completada-automaticamente', () => {
-    recargarDatos();
-  });
-  
-  socket.value.on('tarea-calificada', (data) => {
-    console.log(`⭐ [Tecnico][SOCKET] Tarea calificada: ${data.titulo} - ${data.puntaje}★`);
-    recargarDatos();
-  });
-  
-  socket.value.on('tarea-auto-finalizada', () => {
-    recargarDatos();
-  });
-  
-  socket.value.on('tiempo-estimado-establecido', () => {
-    recargarDatos();
-  });
-  
-  socket.value.on('tarea-finalizada-por-ti', (data) => {
-    console.log('✅ [Tecnico][SOCKET] Tarea finalizada por ti:', data.titulo);
-    recargarDatos();
-  });
-  
-  socket.value.on('tarea-reasignada', (data) => {
-    console.log('🔄 [Tecnico][SOCKET] Tarea reasignada:', data.titulo);
-    recargarDatos();
-  });
-  
+  socket.value.on('progreso-actualizado', () => recargarDatos());
+  socket.value.on('tarea-completada-automaticamente', () => recargarDatos());
+  socket.value.on('tarea-calificada', () => recargarDatos());
+  socket.value.on('tarea-auto-finalizada', () => recargarDatos());
+  socket.value.on('tiempo-estimado-establecido', () => recargarDatos());
+  socket.value.on('tarea-finalizada-por-ti', () => recargarDatos());
+  socket.value.on('tarea-reasignada', () => recargarDatos());
   socket.value.on('rol-actualizado', (data) => {
     if (data.userId === authStore.user?._id) {
       authStore.user.rol = data.nuevoRol;
       localStorage.setItem('user', JSON.stringify(authStore.user));
       alert(`✅ Tu rol ha sido actualizado a: ${data.nuevoRol}`);
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      setTimeout(() => window.location.reload(), 1500);
     }
   });
-  
-  socket.value.on('notificaciones-actualizadas', (data) => {
-    console.log('🔔 [Tecnico][SOCKET] Configuración de notificaciones actualizada');
+  socket.value.on('notificaciones-actualizadas', () => {
+    console.log('🔔 Config actualizada');
   });
   
-  console.log('✅ [Tecnico] Todos los eventos de socket configurados');
+  console.log('✅ [Tecnico] Todos los eventos configurados');
 };
 
-// ============================================================
-// FALLBACK - POLLING
-// ============================================================
-
 const iniciarPollingFallback = () => {
-  console.warn('⚠️ [Tecnico] Polling fallback cada 15s');
   pollingInterval = setInterval(async () => {
     await recargarDatos();
   }, 15000);
@@ -1028,7 +945,6 @@ const iniciarPollingFallback = () => {
 // ============================================================
 
 const cargarTareasDisponibles = async () => {
-  console.log('📤 [Tecnico] Cargando tareas disponibles...');
   cargandoDisponibles.value = true;
   try {
     const token = localStorage.getItem('token');
@@ -1036,8 +952,16 @@ const cargarTareasDisponibles = async () => {
     const response = await $fetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     });
+    
+    // 🔥 Comparar firmas antes de reemplazar (anti-parpadeo)
+    const firmaActual = tareasDisponibles.value.map(t => t._id).sort().join('|');
+    const firmaNueva = response.map(t => t._id).sort().join('|');
+    
+    if (firmaActual === firmaNueva && tareasDisponibles.value.length === response.length) {
+      return;
+    }
+    
     tareasDisponibles.value = response;
-    console.log(`✅ [Tecnico] ${response.length} tareas disponibles`);
   } catch (error) {
     console.error('❌ [Tecnico] Error cargando tareas disponibles:', error);
   } finally {
@@ -1046,10 +970,8 @@ const cargarTareasDisponibles = async () => {
 };
 
 const recargarDatos = async () => {
-  console.log('🔄 [Tecnico] recargarDatos() llamado');
   await tarjetasStore.fetchTarjetas();
   await cargarTareasDisponibles();
-  console.log('✅ [Tecnico] Datos recargados');
 };
 
 const tomarSiguienteTarea = async () => {
@@ -1142,16 +1064,9 @@ const handleTiempoEstablecido = async () => {
 };
 
 const handleTareaFinalizada = async () => {
-  console.log('✅ [Tecnico] Tarea finalizada desde el modal');
   tareaParaProgreso.value = null;
-  
   await recargarDatos();
-  
-  setTimeout(async () => {
-    console.log('🔄 [Tecnico] Recarga diferida (800ms después)...');
-    await recargarDatos();
-    console.log('✅ [Tecnico] Recarga diferida completada');
-  }, 800);
+  setTimeout(recargarDatos, 800);
 };
 
 const logout = () => {
@@ -1178,7 +1093,6 @@ onMounted(async () => {
   await recargarDatos();
   configurarSockets();
   
-  // 🔔 Inicializar notificaciones (con callback "está libre")
   await inicializarNotificaciones({
     estaLibre: () => !tareaActiva.value
   });
@@ -1197,12 +1111,16 @@ onMounted(async () => {
     ahora.value = Date.now();
   }, 1000);
   
-  // Polling de respaldo
+  // 🔥 Anti-parpadeo: polling cada 30s, solo si el socket está caído
   if (pollingInterval) clearInterval(pollingInterval);
   pollingInterval = setInterval(async () => {
-    console.log('🔄 [Tecnico] Polling de respaldo (20s)');
-    await recargarDatos();
-  }, 20000);
+    const nuxtApp = useNuxtApp();
+    const socketActivo = nuxtApp.$socket;
+    if (!socketActivo || !socketActivo.connected) {
+      console.log('🔄 [Tecnico] Polling de respaldo (socket caído)');
+      await recargarDatos();
+    }
+  }, 30000);
   
   console.log('✅ [Tecnico] Inicialización completada');
   console.log('========================================');

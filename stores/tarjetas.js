@@ -48,8 +48,36 @@ export const useTarjetasStore = defineStore('tarjetas', {
         console.warn('⚠️ [Store] No hay token en localStorage');
         return {};
       }
-      console.log(`🔑 [Store] Token presente: ${token.substring(0, 30)}...`);
       return { Authorization: `Bearer ${token}` };
+    },
+    
+    // ============================================================
+    // 🔥 FUNCIÓN AUXILIAR: Generar firma de un array de tarjetas
+    // Sirve para comparar si los datos cambiaron realmente antes
+    // de reemplazar el array (evita re-renders innecesarios)
+    // ============================================================
+    generarFirma(tarjetas) {
+      if (!Array.isArray(tarjetas)) return '';
+      return tarjetas
+        .map(t => {
+          // Incluir los campos que importan visualmente
+          const campos = [
+            t._id,
+            t.estado || '',
+            t.estadoProgreso || '',
+            t.tiempoAcumulado || 0,
+            t.porcentajeCompletado || 0,
+            t.tiempoEstimadoEmpleado || 0,
+            t.fechaUltimaReanudacion || '',
+            t.fechaUltimaPausa || '',
+            t.fechaFinalizada || '',
+            t.asignadoA?._id || '',
+            t.calificacion?.puntaje || ''
+          ];
+          return campos.join(':');
+        })
+        .sort()
+        .join('|');
     },
     
     // ============================================================
@@ -72,25 +100,9 @@ export const useTarjetasStore = defineStore('tarjetas', {
         const response = await $fetch(url, { headers });
         
         console.log(`   📊 Tareas recibidas: ${response.length}`);
-        if (response.length > 0) {
-          const estados = {};
-          const roles = {};
-          response.forEach(t => {
-            let estado = t.estado;
-            if (estado === 'revision_jefe') estado = 'revision_supervisor';
-            estados[estado] = (estados[estado] || 0) + 1;
-            
-            if (t.asignadoA?.nombre) {
-              roles[t.asignadoA.nombre] = (roles[t.asignadoA.nombre] || 0) + 1;
-            }
-          });
-          console.log('   📋 Distribución por estado:', estados);
-          if (Object.keys(roles).length > 0) {
-            console.log('   👤 Asignados a:', roles);
-          }
-        }
         
-        this.tarjetas = response.map(tarea => ({
+        // Normalizar
+        const nuevasTarjetas = response.map(tarea => ({
           ...tarea,
           tiempoAcumulado: tarea.tiempoAcumulado || 0,
           horasTotalesReales: tarea.horasTotalesReales || 0,
@@ -102,8 +114,19 @@ export const useTarjetasStore = defineStore('tarjetas', {
           estado: tarea.estado === 'revision_jefe' ? 'revision_supervisor' : tarea.estado
         }));
         
+        // 🔥 COMPARAR FIRMAS: solo reemplazar si los datos cambiaron
+        const firmaActual = this.generarFirma(this.tarjetas);
+        const firmaNueva = this.generarFirma(nuevasTarjetas);
+        
+        if (firmaActual === firmaNueva && this.tarjetas.length === nuevasTarjetas.length) {
+          console.log('   ⏭️ Sin cambios detectados, saltando re-render');
+          return this.tarjetas;
+        }
+        
+        console.log(`   🔥 Cambios detectados, actualizando ${nuevasTarjetas.length} tarjetas`);
+        this.tarjetas = nuevasTarjetas;
+        
         console.log('✅ [Store] fetchTarjetas - Completado');
-        console.log(`   📊 Total en store: ${this.tarjetas.length}`);
         return this.tarjetas;
       } catch (error) {
         console.error('❌ Error fetching tarjetas:', error);
@@ -126,7 +149,6 @@ export const useTarjetasStore = defineStore('tarjetas', {
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/disponibles`;
-        console.log(`   📍 URL: ${url}`);
         
         const headers = this.getAuthHeaders();
         const response = await $fetch(url, { headers });
@@ -143,19 +165,15 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // TOMAR SIGUIENTE TAREA
     // ============================================================
     async tomarSiguienteTarea() {
-      console.log('🎯 [Store] tomarSiguienteTarea - Iniciando...');
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/tomar-siguiente`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         const result = await $fetch(url, {
           method: 'PUT',
           headers
         });
         
-        console.log('✅ [Store] tomarSiguienteTarea - Respuesta:', result);
         await this.fetchTarjetas();
         return result;
       } catch (error) {
@@ -168,19 +186,15 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // TOMAR TAREA ESPECÍFICA
     // ============================================================
     async tomarTareaEspecifica(id) {
-      console.log(`🎯 [Store] tomarTareaEspecifica - Tarea: ${id}`);
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/tomar`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         const result = await $fetch(url, {
           method: 'PUT',
           headers
         });
         
-        console.log('✅ [Store] tomarTareaEspecifica - Respuesta:', result);
         await this.fetchTarjetas();
         return result;
       } catch (error) {
@@ -193,13 +207,9 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // CREAR SOLICITUD
     // ============================================================
     async crearSolicitud(data) {
-      console.log('📝 [Store] crearSolicitud - Creando solicitud...');
-      console.log('   📦 Datos:', data);
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         const response = await $fetch(url, {
           method: 'POST',
@@ -207,7 +217,6 @@ export const useTarjetasStore = defineStore('tarjetas', {
           headers
         });
         
-        console.log('✅ [Store] crearSolicitud - Creada:', response);
         await this.fetchTarjetas();
         return response;
       } catch (error) {
@@ -220,13 +229,9 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // CREAR TAREA EXTRA
     // ============================================================
     async crearTareaExtra(data) {
-      console.log('📝 [Store] crearTareaExtra - Creando tarea extra...');
-      console.log('   📦 Datos:', data);
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/tarea-extra`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         const response = await $fetch(url, {
           method: 'POST',
@@ -234,7 +239,6 @@ export const useTarjetasStore = defineStore('tarjetas', {
           headers
         });
         
-        console.log('✅ [Store] crearTareaExtra - Creada:', response);
         await this.fetchTarjetas();
         return response;
       } catch (error) {
@@ -247,19 +251,15 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // AUTO-ASIGNAR TAREA
     // ============================================================
     async autoAsignar(id) {
-      console.log(`🎯 [Store] autoAsignar - Tarea: ${id}`);
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/auto-asignar`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         const result = await $fetch(url, {
           method: 'PUT',
           headers
         });
         
-        console.log('✅ [Store] autoAsignar - Respuesta:', result);
         await this.fetchTarjetas();
         return result;
       } catch (error) {
@@ -272,60 +272,37 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // ASIGNAR POR SUPERVISOR
     // ============================================================
     async asignarPorSupervisor(id, empleadoId, tiempoSugeridoHoras = 0, tiempoSugeridoMinutos = 0) {
-      console.log('👔 [Store] asignarPorSupervisor - Iniciando...');
-      console.log(`   📌 Tarea ID: ${id}`);
-      console.log(`   👤 Empleado ID: ${empleadoId}`);
-      console.log(`   ⏱️ Tiempo sugerido: ${tiempoSugeridoHoras}h ${tiempoSugeridoMinutos}min`);
-      
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/asignar-supervisor`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
-        const body = { 
-          empleadoId, 
-          tiempoSugeridoHoras, 
-          tiempoSugeridoMinutos 
-        };
-        console.log('   📦 Body:', body);
-        
         const response = await $fetch(url, {
           method: 'PUT',
-          body,
+          body: { empleadoId, tiempoSugeridoHoras, tiempoSugeridoMinutos },
           headers
         });
         
-        console.log('✅ [Store] asignarPorSupervisor - Respuesta:', response);
         await this.fetchTarjetas();
         return response;
       } catch (error) {
-        console.error('❌ [Store] asignarPorSupervisor - Error:', error);
-        console.error('   Detalles:', error.data);
+        console.error('❌ Error en asignarPorSupervisor:', error);
         
         let mensajeError = 'Error al asignar la tarea';
-        if (error.data?.message) {
-          mensajeError = error.data.message;
-        } else if (error.data?.error) {
-          mensajeError = error.data.error;
-        } else if (error.message) {
-          mensajeError = error.message;
-        }
+        if (error.data?.message) mensajeError = error.data.message;
+        else if (error.data?.error) mensajeError = error.data.error;
+        else if (error.message) mensajeError = error.message;
         
         throw new Error(mensajeError);
       }
     },
     
     // ============================================================
-    // 🔥 DEVOLVER TAREA (Técnico)
+    // DEVOLVER TAREA (Técnico)
     // ============================================================
     async devolverTarea(id, motivo = '') {
-      console.log(`↩️ [Store] devolverTarea - Tarea: ${id}`);
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/devolver`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         const response = await $fetch(url, {
           method: 'PUT',
@@ -333,7 +310,6 @@ export const useTarjetasStore = defineStore('tarjetas', {
           headers
         });
         
-        console.log('✅ [Store] devolverTarea - Respuesta:', response);
         await this.fetchTarjetas();
         return response;
       } catch (error) {
@@ -343,16 +319,12 @@ export const useTarjetasStore = defineStore('tarjetas', {
     },
     
     // ============================================================
-    // 🔥 REASIGNAR TAREA (Supervisor)
+    // REASIGNAR TAREA (Supervisor)
     // ============================================================
     async reasignarTarea(id, nuevoEmpleadoId, motivo = '') {
-      console.log(`🔄 [Store] reasignarTarea - Tarea: ${id}`);
-      console.log(`   👤 Nuevo empleado: ${nuevoEmpleadoId}`);
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/reasignar`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         const response = await $fetch(url, {
           method: 'PUT',
@@ -360,7 +332,6 @@ export const useTarjetasStore = defineStore('tarjetas', {
           headers
         });
         
-        console.log('✅ [Store] reasignarTarea - Respuesta:', response);
         await this.fetchTarjetas();
         return response;
       } catch (error) {
@@ -373,29 +344,20 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // REGISTRAR PROGRESO
     // ============================================================
     async registrarProgreso(id, data) {
-      console.log('📤 [Store] registrarProgreso - Iniciando...');
-      console.log(`   📌 Tarea ID: ${id}`);
-      console.log(`   📦 Datos:`, data);
-      
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/progreso`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
-        
         const response = await $fetch(url, {
           method: 'PUT',
           body: data,
           headers
         });
         
-        console.log('✅ [Store] registrarProgreso - Respuesta:', response);
         await this.fetchTarjetas();
         return response;
       } catch (error) {
-        console.error('❌ [Store] Error en registrarProgreso:', error);
-        console.error('   Detalles:', error.data);
+        console.error('❌ Error en registrarProgreso:', error);
         throw error;
       }
     },
@@ -404,16 +366,11 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // OBTENER TARJETA ESPECÍFICA
     // ============================================================
     async obtenerTarjeta(id) {
-      console.log(`📋 [Store] obtenerTarjeta - ID: ${id}`);
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         const response = await $fetch(url, { headers });
-        
-        console.log('✅ [Store] obtenerTarjeta - Encontrada:', response?.titulo);
         return response;
       } catch (error) {
         console.error('❌ Error en obtenerTarjeta:', error);
@@ -425,15 +382,9 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // CALIFICAR TAREA
     // ============================================================
     async calificarTarea(id, puntaje, comentario) {
-      console.log(`⭐ [Store] calificarTarea - Tarea: ${id}`);
-      console.log(`   - Puntaje: ${puntaje}`);
-      console.log(`   - Comentario: ${comentario}`);
-      
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/tarjetas/${id}/calificar`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         const response = await $fetch(url, {
           method: 'PUT',
@@ -441,7 +392,6 @@ export const useTarjetasStore = defineStore('tarjetas', {
           headers
         });
         
-        console.log('✅ [Store] calificarTarea - Respuesta:', response);
         await this.fetchTarjetas();
         return response;
       } catch (error) {
@@ -454,16 +404,11 @@ export const useTarjetasStore = defineStore('tarjetas', {
     // FETCH ESTADÍSTICAS
     // ============================================================
     async fetchEstadisticas() {
-      console.log('📊 [Store] fetchEstadisticas - Obteniendo estadísticas...');
       try {
         const config = useRuntimeConfig();
         const url = `${config.public.apiBase}/estadisticas`;
-        console.log(`   📍 URL: ${url}`);
-        
         const headers = this.getAuthHeaders();
         this.estadisticas = await $fetch(url, { headers });
-        
-        console.log('✅ [Store] fetchEstadisticas - Completado');
         return this.estadisticas;
       } catch (error) {
         console.error('❌ Error en fetchEstadisticas:', error);

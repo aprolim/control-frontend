@@ -8,7 +8,7 @@
             <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
               <span class="text-white text-sm font-bold">CP</span>
             </div>
-            <h1 class="text-base font-semibold text-gray-800 dark:text-white">Control de Personal</h1>
+            <h1 class="text-base font-semibold text-gray-800 dark:text-white">Control de Actividades</h1>
           </div>
           
           <div class="flex items-center gap-3">
@@ -72,7 +72,10 @@
       
       <!-- Contenido según tab activo -->
       <div v-if="activeTab === 'kanban'">
-        <KanbanBoardProfesional ref="kanbanBoardRef" />
+        <KanbanBoardProfesional 
+          ref="kanbanBoardRef" 
+          @abrir-historial="abrirHistorialFinalizadas"
+        />
       </div>
       
       <div v-if="activeTab === 'dashboard'">
@@ -83,11 +86,9 @@
         <ReportesAvanzados />
       </div>
       
-      <div v-if="activeTab === 'notificaciones'">
-        <ConfiguracionNotificaciones />
+      <div v-if="activeTab === 'solicitudes'">
+        <GestionSolicitudesPredefinidas />
       </div>
-      
-
     </div>
     
     <!-- Modales -->
@@ -96,6 +97,11 @@
       :extra="false"
       @close="modalSolicitud = false"
       @created="recargarDatos"
+    />
+    
+    <HistorialFinalizadas
+      v-if="modalHistorial"
+      @close="modalHistorial = false"
     />
   </div>
 </template>
@@ -128,11 +134,12 @@ const tabs = ref([
   { key: 'kanban', label: 'Kanban', icon: '📌' },
   { key: 'dashboard', label: 'Dashboard', icon: '📊' },
   { key: 'reportes', label: 'Reportes', icon: '📈' },
-  { key: 'notificaciones', label: 'Notificaciones', icon: '🔔' },
+  { key: 'solicitudes', label: 'Solicitudes Rápidas', icon: '⚡' }
 ]);
 
 const activeTab = ref('kanban');
 const modalSolicitud = ref(false);
+const modalHistorial = ref(false);
 const kanbanBoardRef = ref(null);
 
 const socket = ref(null);
@@ -223,6 +230,11 @@ const abrirModalSolicitud = () => {
   modalSolicitud.value = true;
 };
 
+const abrirHistorialFinalizadas = () => {
+  console.log('📜 [Supervisor] Abriendo historial de finalizadas');
+  modalHistorial.value = true;
+};
+
 // ============================================================
 // LIFECYCLE
 // ============================================================
@@ -251,7 +263,6 @@ onMounted(async () => {
     }
   }, 3000);
   
-  // Polling de respaldo
   if (pollingInterval) clearInterval(pollingInterval);
   pollingInterval = setInterval(async () => {
     await recargarDatos();

@@ -68,7 +68,7 @@ export default defineNuxtConfig({
   
   app: {
     head: {
-      title: 'Control de Personal',
+      title: 'Control de Actividades del Personal',
       meta: [
         { name: 'description', content: 'Sistema de control de personal' }
       ]

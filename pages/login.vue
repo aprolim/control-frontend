@@ -10,7 +10,7 @@
           <span class="text-white text-xl font-bold">CP</span>
         </div>
         <h2 class="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
-          Control de Personal
+          Control de Actividades
         </h2>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Inicia sesión con tu cuenta de Zimbra
